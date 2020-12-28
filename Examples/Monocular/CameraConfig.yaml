@@ -30,8 +30,8 @@ FisheyeCamera.k2: 1.6548773243373522e+00
 FisheyeCamera.p1: 4.2223943394772046e-04
 FisheyeCamera.p2: 4.2462134260997584e-04
 
-FisheyeCamera.width: 1400
-FisheyeCamera.height: 1400
+FisheyeImage.width: 1400
+FisheyeImage.height: 1400
 
 # Camera frames per second
 Camera.fps: 10.0

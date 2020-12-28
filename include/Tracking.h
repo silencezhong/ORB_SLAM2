@@ -26,6 +26,8 @@
 #include<opencv2/features2d/features2d.hpp>
 
 #include "Images.h"
+#include "CameraPerspective.h"
+#include "CameraFisheye.h"
 #include"Viewer.h"
 #include"FrameDrawer.h"
 #include"Map.h"
@@ -56,19 +58,14 @@ class Tracking
 
 public:
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Map* pMap,
-             KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor);
+             KeyFrameDatabase* pKFDB, const cv::FileStorage& fSettings, const int sensor);
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
-    cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
+    cv::Mat GrabImageMonocular(const cv::Mat &im, const cv::Mat &f_fisheyeIm_r, const double &timestamp);
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
     void SetViewer(Viewer* pViewer);
-
-    // Load new settings
-    // The focal lenght should be similar or scale prediction will fail when projecting points
-    // TODO: Modify MapPoint::PredictScale to take into account focal lenght
-    void ChangeCalibration(const string &strSettingPath);
 
     // Use this function if you have deactivated local mapping and you only want to localize the camera.
     void InformOnlyTracking(const bool &flag);
@@ -93,7 +90,6 @@ public:
 
     // Current Frame
     Frame mCurrentFrame;
-    cv::Mat mImGray;
 
     // Initialization Variables (Monocular)
     std::vector<int> mvIniLastMatches;
@@ -114,9 +110,9 @@ public:
 
     void Reset();
 
-protected:
+    const camera_model::CCameraPerspective& getPerspectiveCamera() const {return m_perspectiveCamera;}
 
-    // Main tracking function. It is independent of the input sensor.
+protected:
     void Track();
 
     // Map initialization for monocular
@@ -177,10 +173,10 @@ protected:
     //Map
     Map* mpMap;
 
-    //Calibration matrix
-    cv::Mat mK;
+    //camera model with calibration info
     cv::Mat mDistCoef;
-    float mbf;
+    camera_model::CCameraPerspective m_perspectiveCamera;
+    camera_model::CCameraFisheye     m_fisheyeCamera;
 
     //New KeyFrame rules (according to fps)
     int mMinFrames;
@@ -190,9 +186,6 @@ protected:
     // Points seen as close by the stereo/RGBD sensor are considered reliable
     // and inserted from just one frame. Far points requiere a match in two keyframes.
     float mThDepth;
-
-    // For RGB-D inputs only. For some datasets (e.g. TUM) the depthmap values are scaled.
-    float mDepthMapFactor;
 
     //Current matches in frame
     int mnMatchesInliers;
@@ -205,9 +198,6 @@ protected:
 
     //Motion Model
     cv::Mat mVelocity;
-
-    //Color order (true RGB, false BGR, ignored if grayscale)
-    bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
 };

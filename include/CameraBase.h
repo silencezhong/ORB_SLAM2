@@ -23,6 +23,8 @@ Date: 27.Dec.2020
 #include <opencv2/opencv.hpp>
 #include <Eigen/Dense>
 
+#include "Images.h"
+
 
 namespace camera_model
 {
@@ -30,8 +32,17 @@ namespace camera_model
     {
     public:
         // construtors
-        CCameraBase() = default;
-
+        CCameraBase(const float f_fx_f, const float f_fy_f, const float f_cx_f, const float f_cy_f, const float f_width_f, const float f_height_f, const int f_rgb_i)
+        : m_fx_f(f_fx_f), m_fy_f(f_fy_f), m_cx_f(f_cx_f), m_cy_f(f_cy_f), m_image(f_width_f, f_height_f, f_rgb_i)
+        {
+            cv::Mat K = cv::Mat::eye(3,3,CV_32F);
+            K.at<float>(0,0) = m_fx_f;
+            K.at<float>(1,1) = m_fy_f;
+            K.at<float>(0,2) = m_cx_f;
+            K.at<float>(1,2) = m_cy_f;
+            K.copyTo(m_intrinsicsMat);
+        }
+        CCameraBase() = delete;
         ~CCameraBase() = default;
 
         virtual void CameraToImg(const float& x, const float& y, const float& z,
@@ -40,11 +51,18 @@ namespace camera_model
         virtual void ImgToCamera(float& x, float& y, float& z,
                         const float& u, const float& v) const = 0;
 
-        float Get_cx() { return m_cx_f; }
-        float Get_cy() { return m_cy_f; }
+        float  getFx() const {return m_fx_f;}
+        float  getFy() const {return m_fy_f;}
 
-        float GetWidth() { return m_width_f; }
-        float GetHeight() { return m_height_f; }
+        float getCx() { return m_cx_f; }
+        float getCy() { return m_cy_f; }
+
+        const images::CImages& getImageClass() const { return m_image; }
+
+        void setImage(const cv::Mat& f_img_r)
+        {
+            m_image.setImage(f_img_r);
+        }
 
     protected:
         //Calibration matrix
@@ -59,8 +77,7 @@ namespace camera_model
         float m_cy_f;
 
         // image width and height
-        float m_width_f;
-        float m_height_f;
+        images::CImages m_image;
     };
 }
 #endif // CAMERA_BASE_H

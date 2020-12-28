@@ -31,8 +31,7 @@
 
 using namespace std;
 
-void LoadImages(const string &strSequence, vector<string> &vstrImageFilenames,
-                vector<double> &vTimestamps);
+void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilenames, vector<string> &vstrFisheyeImageFilenames, vector<double> &vTimestamps);
 
 int main(int argc, char **argv)
 {
@@ -44,8 +43,9 @@ int main(int argc, char **argv)
 
     // Retrieve paths to images
     vector<string> vstrImageFilenames;
+    vector<string> vstrFisheyeImageFilenames;
     vector<double> vTimestamps;
-    LoadImages(string(argv[3]), vstrImageFilenames, vTimestamps);
+    LoadImages(string(argv[3]), vstrImageFilenames, vstrFisheyeImageFilenames, vTimestamps);
 
     int nImages = vstrImageFilenames.size();
 
@@ -62,6 +62,7 @@ int main(int argc, char **argv)
 
     // Main loop
     cv::Mat im;
+    cv::Mat l_fisheyeIm;
     for(int ni=0; ni<nImages; ni++)
     {
         // Read image from file
@@ -74,6 +75,13 @@ int main(int argc, char **argv)
             return 1;
         }
 
+        l_fisheyeIm = cv::imread(vstrFisheyeImageFilenames[ni],CV_LOAD_IMAGE_UNCHANGED);
+        if(l_fisheyeIm.empty())
+        {
+            cerr << endl << "Failed to load fisheye image at: " << vstrFisheyeImageFilenames[ni] << endl;
+            return 1;
+        }
+
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 #else
@@ -81,7 +89,7 @@ int main(int argc, char **argv)
 #endif
 
         // Pass the image to the SLAM system
-        SLAM.TrackMonocular(im,tframe);
+        SLAM.TrackMonocular(im, l_fisheyeIm, tframe);
 
 #ifdef COMPILEDWITHC11
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
@@ -124,7 +132,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilenames, vector<double> &vTimestamps)
+void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilenames, vector<string> &vstrFisheyeImageFilenames, vector<double> &vTimestamps)
 {
     ifstream fTimes;
     string strPathTimeFile = strPathToSequence + "/times.txt";
@@ -153,5 +161,14 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageFilena
         stringstream ss;
         ss << setfill('0') << setw(10) << i;
         vstrImageFilenames[i] = strPrefixLeft + ss.str() + ".png";
+    }
+
+    vstrFisheyeImageFilenames.resize(nTimes);
+    const string strPrefixFisheye = strPathToSequence + "/image_02/data_rgb/";
+    for(int i=0; i<nTimes; i++)
+    {
+        stringstream ss;
+        ss << setfill('0') << setw(10) << i;
+        vstrFisheyeImageFilenames[i] = strPrefixFisheye + ss.str() + ".png";
     }
 }
