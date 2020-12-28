@@ -1,21 +1,39 @@
 %YAML:1.0
 
 #--------------------------------------------------------------------------------------------
-# Camera Parameters. Adjust them!
+# Perspective Camera 1(image 00) Parameters.
 #--------------------------------------------------------------------------------------------
+# Perspective Camera calibration and distortion parameters (OpenCV)
+PerspectiveCamera.fx: 552.554261
+PerspectiveCamera.fy: 552.554261
+PerspectiveCamera.cx: 682.049453
+PerspectiveCamera.cy: 238.769549
 
-# Camera calibration and distortion parameters (OpenCV) 
-Camera.fx: 721.5377
-Camera.fy: 721.5377
-Camera.cx: 609.5593
-Camera.cy: 172.854
+PerspectiveCamera.k1: 0.0
+PerspectiveCamera.k2: 0.0
+PerspectiveCamera.p1: 0.0
+PerspectiveCamera.p2: 0.0
 
-Camera.k1: 0.0
-Camera.k2: 0.0
-Camera.p1: 0.0
-Camera.p2: 0.0
+PerspectiveImage.width: 1408
+PerspectiveImage.height: 376
 
-# Camera frames per second 
+#--------------------------------------------------------------------------------------------
+# Fisheye Camera 1 (image 02) Parameters.
+#--------------------------------------------------------------------------------------------
+FisheyeCamera.fx: 1336.322
+FisheyeCamera.fy: 1335.788
+FisheyeCamera.cx: 716.9432
+FisheyeCamera.cy: 705.7649
+
+FisheyeCamera.k1: 1.6798235660113681e-02
+FisheyeCamera.k2: 1.6548773243373522e+00
+FisheyeCamera.p1: 4.2223943394772046e-04
+FisheyeCamera.p2: 4.2462134260997584e-04
+
+FisheyeCamera.width: 1400
+FisheyeCamera.height: 1400
+
+# Camera frames per second
 Camera.fps: 10.0
 
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
@@ -47,7 +65,7 @@ ORBextractor.minThFAST: 7
 Viewer.KeyFrameSize: 0.1
 Viewer.KeyFrameLineWidth: 1
 Viewer.GraphLineWidth: 1
-Viewer.PointSize:2
+Viewer.PointSize: 2
 Viewer.CameraSize: 0.15
 Viewer.CameraLineWidth: 2
 Viewer.ViewpointX: 0
