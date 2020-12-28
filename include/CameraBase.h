@@ -34,29 +34,33 @@ namespace camera_model
 
         ~CCameraBase() = default;
 
-        virtual void CameraToImg(const double& x, const double& y, const double& z,
-                        double& u, double& v) const = 0;
+        virtual void CameraToImg(const float& x, const float& y, const float& z,
+                        float& u, float& v) const = 0;
 
-        virtual void ImgToCamera(double& x, double& y, double& z,
-                        const double& u, const double& v) const = 0;
+        virtual void ImgToCamera(float& x, float& y, float& z,
+                        const float& u, const float& v) const = 0;
 
-        double Get_u0() { return m_u0_d; }
-        double Get_v0() { return m_v0_d; }
+        float Get_cx() { return m_cx_f; }
+        float Get_cy() { return m_cy_f; }
 
-        double GetWidth() { return m_width_d; }
-        double GetHeight() { return m_height_d; }
+        float GetWidth() { return m_width_f; }
+        float GetHeight() { return m_height_f; }
 
     protected:
         //Calibration matrix
-        cv::Mat mK;
+        cv::Mat m_intrinsicsMat;
+
+        // focal length
+        float m_fx_f;
+        float m_fy_f;
 
         // principal
-        double m_u0_d;
-        double m_v0_d;
+        float m_cx_f;
+        float m_cy_f;
 
         // image width and height
-        double m_width_d;
-        double m_height_d;
+        float m_width_f;
+        float m_height_f;
     };
 }
 #endif // CAMERA_BASE_H

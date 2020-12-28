@@ -3,14 +3,14 @@
 namespace camera_model
 {
 
-void CCameraFisheye::CameraToImg(const double& x, const double& y, const double& z,
-                                      double& u, double& v) const
+void CCameraFisheye::CameraToImg(const float& x, const float& y, const float& z,
+                                      float& u, float& v) const
 {
 
 }
 
-void CCameraFisheye::ImgToCamera(double& x, double& y, double& z,
-                                 const double& u, const double& v) const
+void CCameraFisheye::ImgToCamera(float& x, float& y, float& z,
+                                 const float& u, const float& v) const
 {
 
 }
