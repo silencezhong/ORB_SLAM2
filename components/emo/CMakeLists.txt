@@ -36,18 +36,26 @@ ADD_LIBRARY(${PROJECT_NAME} ${EMO_LIB_TYPE} ${SRC_LISTS})
 target_link_libraries(${PROJECT_NAME}
         ${OpenCV_LIBS}
         ${EIGEN3_LIBS}
-        ${PROJECT_SOURCE_DIR}/../../Thirdparty/g2o/lib/libg2o.so)
+        ${PROJECT_SOURCE_DIR}/../../Thirdparty/g2o/lib/libg2o.so
+        ${PROJECT_SOURCE_DIR}/../camera/lib/libcamera.so)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
         ${PROJECT_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}/inc
+        ${PROJECT_SOURCE_DIR}/../
         ${PROJECT_SOURCE_DIR}/../../
         ${EIGEN3_INCLUDE_DIR})
 
 # Load two images, cacluate ORB feature and correspondency
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
-#add_executable(test test/test_flow.cpp)
-#target_link_libraries(test ${PROJECT_NAME})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
+add_executable(test test/test_emo.cpp)
+target_link_libraries(test
+        ${PROJECT_NAME}
+        ${PROJECT_SOURCE_DIR}/../camera/lib/libcamera.so)
+target_include_directories(test PUBLIC
+        ${PROJECT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}/inc
+        ${PROJECT_SOURCE_DIR}/../)
 
 
 
