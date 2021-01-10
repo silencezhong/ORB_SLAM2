@@ -48,6 +48,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 # Load two images, cacluate ORB feature and correspondency
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/test)
+set(SOURCE_FILES ${PROJECT_SOURCE_DIR}/test/test_emo.cpp)
 add_executable(test test/test_emo.cpp)
 target_link_libraries(test
         ${PROJECT_NAME}

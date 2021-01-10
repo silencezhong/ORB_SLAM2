@@ -29,7 +29,7 @@
 #include <map>
 
 using namespace std;
-namespace ORB_SLAM2
+namespace emo
 {
 
 class Map;
@@ -147,7 +147,7 @@ public:
     long unsigned int mnBAGlobalForKF;
 
     // Calibration parameters
-    const float fx, fy, cx, cy, invfx, invfy, mbf, mb, mThDepth;
+    const float fx, fy, cx, cy, invfx, invfy;
 
     // Number of KeyPoints
     const int N;

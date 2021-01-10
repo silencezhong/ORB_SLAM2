@@ -23,7 +23,7 @@
 
 #include<mutex>
 
-namespace ORB_SLAM2
+namespace emo
 {
 
 long unsigned int MapPoint::nNextId=0;
@@ -56,7 +56,7 @@ MapPoint::MapPoint(const cv::Mat &Pos, Map* pMap, Frame* pFrame, const int &idxF
 
     cv::Mat PC = Pos - Ow;
     const float dist = cv::norm(PC);
-    const int level = pFrame->mvKeysUn[idxF].octave;
+    const int level = pFrame->mvKeys[idxF].octave;
     const float levelScaleFactor =  pFrame->mvScaleFactors[level];
     const int nLevels = pFrame->mnScaleLevels;
 

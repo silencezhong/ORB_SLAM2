@@ -27,9 +27,10 @@
 #include "ORBextractor.h"
 #include "MapPoint.h"
 #include "KeyFrame.h"
+#include "camera/inc/PinholeCamera.h"
 #include <opencv2/opencv.hpp>
 
-namespace ORB_SLAM2
+namespace emo
 {
 #define FRAME_GRID_ROWS 48
 #define FRAME_GRID_COLS 64
@@ -40,13 +41,11 @@ class KeyFrame;
 class Frame
 {
 public:
-    Frame();
-
     // Copy constructor.
     Frame(const Frame &frame);
 
     // Constructor for Monocular cameras.
-    Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor, cv::Mat K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+    Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, camera::Pinhole& f_pinhole_r, cv::Mat K, cv::Mat &distCoef );
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im);
@@ -75,13 +74,10 @@ public:
     bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
 
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
-
-    // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
-    cv::Mat UnprojectStereo(const int &i);
-
 public:
-    // Feature extractor. The right is used only in the stereo case.
-    ORBextractor* mpORBextractorLeft, *mpORBextractorRight;
+    // Feature extractor.
+    ORBextractor& m_ORBextractor;
+    camera::Pinhole& m_camera;
 
     // Frame timestamp.
     double mTimeStamp;
@@ -95,16 +91,6 @@ public:
     static float invfx;
     static float invfy;
     cv::Mat mDistCoef;
-
-    // Stereo baseline multiplied by fx.
-    float mbf;
-
-    // Stereo baseline in meters.
-    float mb;
-
-    // Threshold close/far points. Close points are inserted from 1 view.
-    // Far points are inserted as in the monocular case from 2 views.
-    float mThDepth;
 
     // Number of KeyPoints.
     int N;
@@ -163,7 +149,6 @@ public:
 
 
 private:
-
     // Undistort keypoints given OpenCV distortion parameters.
     // Only for the RGB-D case. Stereo must be already rectified!
     // (called in the constructor).
@@ -179,7 +164,7 @@ private:
     cv::Mat mRcw;
     cv::Mat mtcw;
     cv::Mat mRwc;
-    cv::Mat mOw; //==mtwc
+    cv::Mat mOw;
 };
 
 }// namespace ORB_SLAM

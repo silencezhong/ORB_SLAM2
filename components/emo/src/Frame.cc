@@ -22,7 +22,7 @@
 #include "ORBmatcher.h"
 #include <thread>
 
-namespace ORB_SLAM2
+namespace emo
 {
 
     long unsigned int Frame::nNextId=0;
@@ -31,15 +31,12 @@ namespace ORB_SLAM2
     float Frame::mnMinX, Frame::mnMinY, Frame::mnMaxX, Frame::mnMaxY;
     float Frame::mfGridElementWidthInv, Frame::mfGridElementHeightInv;
 
-    Frame::Frame()
-    {}
-
     //Copy Constructor
     Frame::Frame(const Frame &frame)
-            :mpORBextractorLeft(frame.mpORBextractorLeft), mpORBextractorRight(frame.mpORBextractorRight),
-             mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
-             mbf(frame.mbf), mb(frame.mb), mThDepth(frame.mThDepth), N(frame.N), mvKeys(frame.mvKeys),
-             mvKeysRight(frame.mvKeysRight), mvKeysUn(frame.mvKeysUn),  mvuRight(frame.mvuRight),
+            :m_ORBextractor(frame.m_ORBextractor),
+             mTimeStamp(frame.mTimeStamp),m_camera(frame.m_camera), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
+             N(frame.N), mvKeys(frame.mvKeys),
+             mvKeysUn(frame.mvKeysUn),  mvuRight(frame.mvuRight),
              mvDepth(frame.mvDepth),
              mDescriptors(frame.mDescriptors.clone()), mDescriptorsRight(frame.mDescriptorsRight.clone()),
              mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), mnId(frame.mnId),
@@ -59,21 +56,21 @@ namespace ORB_SLAM2
 
 
 
-    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor, cv::Mat K, cv::Mat &distCoef, const float &bf, const float &thDepth)
-            : mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
-              mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
+    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, camera::Pinhole& f_pinhole_r, cv::Mat K, cv::Mat &distCoef)
+            : m_ORBextractor(extractor),
+              mTimeStamp(timeStamp), m_camera(f_pinhole_r), mK(K.clone()), mDistCoef(distCoef.clone())
     {
         // Frame ID
         mnId=nNextId++;
 
         // Scale Level Info
-        mnScaleLevels = mpORBextractorLeft->GetLevels();
-        mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
+        mnScaleLevels = m_ORBextractor.GetLevels();
+        mfScaleFactor = m_ORBextractor.GetScaleFactor();
         mfLogScaleFactor = log(mfScaleFactor);
-        mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
-        mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
-        mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
-        mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
+        mvScaleFactors = m_ORBextractor.GetScaleFactors();
+        mvInvScaleFactors = m_ORBextractor.GetInverseScaleFactors();
+        mvLevelSigma2 = m_ORBextractor.GetScaleSigmaSquares();
+        mvInvLevelSigma2 = m_ORBextractor.GetInverseScaleSigmaSquares();
 
         // ORB extraction
         ExtractORB(0,imGray);
@@ -110,8 +107,6 @@ namespace ORB_SLAM2
             mbInitialComputations=false;
         }
 
-        mb = mbf/fx;
-
         AssignFeaturesToGrid();
     }
 
@@ -134,10 +129,7 @@ namespace ORB_SLAM2
 
     void Frame::ExtractORB(int flag, const cv::Mat &im)
     {
-        if(flag==0)
-            (*mpORBextractorLeft)(im,cv::Mat(),mvKeys,mDescriptors);
-        else
-            (*mpORBextractorRight)(im,cv::Mat(),mvKeysRight,mDescriptorsRight);
+        m_ORBextractor(im,cv::Mat(),mvKeys,mDescriptors);
     }
 
     void Frame::SetPose(cv::Mat Tcw)
@@ -204,7 +196,7 @@ namespace ORB_SLAM2
         // Data used by the tracking
         pMP->mbTrackInView = true;
         pMP->mTrackProjX = u;
-        pMP->mTrackProjXR = u - mbf*invz;
+//        pMP->mTrackProjXR = u - mbf*invz;
         pMP->mTrackProjY = v;
         pMP->mnTrackScaleLevel= nPredictedLevel;
         pMP->mTrackViewCos = viewCos;
@@ -313,48 +305,9 @@ namespace ORB_SLAM2
 
     void Frame::ComputeImageBounds(const cv::Mat &imLeft)
     {
-        if(mDistCoef.at<float>(0)!=0.0)
-        {
-            cv::Mat mat(4,2,CV_32F);
-            mat.at<float>(0,0)=0.0; mat.at<float>(0,1)=0.0;
-            mat.at<float>(1,0)=imLeft.cols; mat.at<float>(1,1)=0.0;
-            mat.at<float>(2,0)=0.0; mat.at<float>(2,1)=imLeft.rows;
-            mat.at<float>(3,0)=imLeft.cols; mat.at<float>(3,1)=imLeft.rows;
-
-            // Undistort corners
-            mat=mat.reshape(2);
-            cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);
-            mat=mat.reshape(1);
-
-            mnMinX = std::min(mat.at<float>(0,0),mat.at<float>(2,0));
-            mnMaxX = std::max(mat.at<float>(1,0),mat.at<float>(3,0));
-            mnMinY = std::min(mat.at<float>(0,1),mat.at<float>(1,1));
-            mnMaxY = std::max(mat.at<float>(2,1),mat.at<float>(3,1));
-
-        }
-        else
-        {
-            mnMinX = 0.0f;
-            mnMaxX = imLeft.cols;
-            mnMinY = 0.0f;
-            mnMaxY = imLeft.rows;
-        }
+        mnMinX = 0.0f;
+        mnMaxX = imLeft.cols;
+        mnMinY = 0.0f;
+        mnMaxY = imLeft.rows;
     }
-
-    cv::Mat Frame::UnprojectStereo(const int &i)
-    {
-        const float z = mvDepth[i];
-        if(z>0)
-        {
-            const float u = mvKeysUn[i].pt.x;
-            const float v = mvKeysUn[i].pt.y;
-            const float x = (u-cx)*z*invfx;
-            const float y = (v-cy)*z*invfy;
-            cv::Mat x3Dc = (cv::Mat_<float>(3,1) << x, y, z);
-            return mRwc*x3Dc+mOw;
-        }
-        else
-            return cv::Mat();
-    }
-
 } //namespace ORB_SLAM

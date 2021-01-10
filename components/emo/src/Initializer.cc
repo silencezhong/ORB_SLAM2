@@ -28,14 +28,14 @@
 
 using namespace std;
 
-namespace ORB_SLAM2
+namespace emo
 {
 
 Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iterations)
 {
-    mK = ReferenceFrame.mK.clone();
+    mK = ReferenceFrame.m_camera.toK();
 
-    mvKeys1 = ReferenceFrame.mvKeysUn;
+    mvKeys1 = ReferenceFrame.mvKeys;
 
     mSigma = sigma;
     mSigma2 = sigma*sigma;
@@ -47,7 +47,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
 {
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
-    mvKeys2 = CurrentFrame.mvKeysUn;
+    mvKeys2 = CurrentFrame.mvKeys;
 
     mvMatches12.clear();
     mvMatches12.reserve(mvKeys2.size());
@@ -77,18 +77,17 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
 
     // Generate sets of 8 points for each RANSAC iteration
     mvSets = vector< vector<size_t> >(mMaxIterations,vector<size_t>(8,0));
-    std::default_random_engine l_randNum(0);// seed is 0
+    std::default_random_engine l_randNumEngine;// seed is 0
 
     for(int it=0; it<mMaxIterations; it++)
     {
         vAvailableIndices = vAllIndices;
 
         // Select a minimum set
-        std::uniform_int_distribution<unsigned> l_uniformRandom(0,vAvailableIndices.size()-1);
+        std::uniform_int_distribution<unsigned> l_uniformRandomDistribution(0,vAvailableIndices.size()-1);
         for(size_t j=0; j<8; j++)
         {
-            l_uniformRandom(l_randNum);
-            int randi = l_randNum();
+            int randi = l_uniformRandomDistribution(l_randNumEngine);
             int idx = vAvailableIndices[randi];
 
             mvSets[it][j] = idx;
@@ -115,9 +114,9 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
 
     // Try to reconstruct from homography or fundamental depending on the ratio (0.40-0.45)
     if(RH>0.40)
-        return ReconstructH(vbMatchesInliersH,H,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
+        return ReconstructH(vbMatchesInliersH,H,mK,R21,t21,vP3D,vbTriangulated,0.1,20);
     else //if(pF_HF>0.6)
-        return ReconstructF(vbMatchesInliersF,F,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
+        return ReconstructF(vbMatchesInliersF,F,mK,R21,t21,vP3D,vbTriangulated,0.1,20);
 
     return false;
 }
@@ -503,7 +502,7 @@ bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv:
     R21 = cv::Mat();
     t21 = cv::Mat();
 
-    int nMinGood = max(static_cast<int>(0.9*N),minTriangulated);
+    int nMinGood = max(static_cast<int>(0.6*N),minTriangulated);
 
     int nsimilar = 0;
     if(nGood1>0.7*maxGood)
@@ -839,6 +838,15 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
         cv::Mat p3dC1;
 
         Triangulate(kp1,kp2,P1,P2,p3dC1);
+
+//        auto t1 = mK.at<float>(0,0);
+//        auto t2 = mK.at<float>(0,2);
+//        auto t3 = mK.at<float>(1,1);
+//        auto t4 = mK.at<float>(1,2);
+//        auto t5 = mK.at<float>(2,2);
+        auto t1 = p3dC1.at<float>(0,1);
+        auto t2 = p3dC1.at<float>(0,2);
+        auto t3 = p3dC1.at<float>(0,3);
 
         if(!isfinite(p3dC1.at<float>(0)) || !isfinite(p3dC1.at<float>(1)) || !isfinite(p3dC1.at<float>(2)))
         {

@@ -22,7 +22,7 @@
 
 #include<mutex>
 
-namespace ORB_SLAM2
+namespace emo
 {
 
 Map::Map():mnMaxKFid(0),mnBigChangeIdx(0)

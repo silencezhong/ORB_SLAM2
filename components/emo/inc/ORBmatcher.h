@@ -29,7 +29,7 @@
 #include"Frame.h"
 
 
-namespace ORB_SLAM2
+namespace emo
 {
 
 class ORBmatcher
