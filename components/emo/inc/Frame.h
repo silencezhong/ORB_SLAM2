@@ -74,6 +74,8 @@ public:
     bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
 
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
+
+    void derotateKeys(const cv::Mat& f_rotation_r );
 public:
     // Feature extractor.
     ORBextractor& m_ORBextractor;
@@ -96,10 +98,9 @@ public:
     int N;
 
     // Vector of keypoints (original for visualization) and undistorted (actually used by the system).
-    // In the stereo case, mvKeysUn is redundant as images must be rectified.
-    // In the RGB-D case, RGB images can be distorted.
-    std::vector<cv::KeyPoint> mvKeys, mvKeysRight;
+    std::vector<cv::KeyPoint> mvKeys;
     std::vector<cv::KeyPoint> mvKeysUn;
+    std::vector<cv::Point2f>  m_derotatedKeys;
 
     // Corresponding stereo coordinate and depth for each keypoint.
     // "Monocular" keypoints have a negative value.
@@ -107,7 +108,7 @@ public:
     std::vector<float> mvDepth;
 
     // ORB descriptor, each row associated to a keypoint.
-    cv::Mat mDescriptors, mDescriptorsRight;
+    cv::Mat mDescriptors;
 
     // MapPoints associated to keypoints, NULL pointer if no association.
     std::vector<MapPoint*> mvpMapPoints;

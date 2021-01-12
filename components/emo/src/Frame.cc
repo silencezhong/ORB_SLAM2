@@ -36,9 +36,9 @@ namespace emo
             :m_ORBextractor(frame.m_ORBextractor),
              mTimeStamp(frame.mTimeStamp),m_camera(frame.m_camera), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
              N(frame.N), mvKeys(frame.mvKeys),
-             mvKeysUn(frame.mvKeysUn),  mvuRight(frame.mvuRight),
+             mvuRight(frame.mvuRight),
              mvDepth(frame.mvDepth),
-             mDescriptors(frame.mDescriptors.clone()), mDescriptorsRight(frame.mDescriptorsRight.clone()),
+             mDescriptors(frame.mDescriptors.clone()),
              mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), mnId(frame.mnId),
              mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
              mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
@@ -58,8 +58,14 @@ namespace emo
 
     Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, camera::Pinhole& f_pinhole_r, cv::Mat K, cv::Mat &distCoef)
             : m_ORBextractor(extractor),
-              mTimeStamp(timeStamp), m_camera(f_pinhole_r), mK(K.clone()), mDistCoef(distCoef.clone())
+              mTimeStamp(timeStamp), m_camera(f_pinhole_r), mK(K.clone()), mDistCoef(distCoef.clone()), m_derotatedKeys()
     {
+//         auto t1 = mK.at<float>(0,0);
+//        auto t2 = mK.at<float>(0,2);
+//        auto t3 = mK.at<float>(1,1);
+//        auto t4 = mK.at<float>(1,2);
+//        auto t5 = mK.at<float>(2,2);
+
         // Frame ID
         mnId=nNextId++;
 
@@ -86,7 +92,7 @@ namespace emo
         mvuRight = std::vector<float>(N,-1);
         mvDepth = std::vector<float>(N,-1);
 
-        mvpMapPoints = std::vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));
+        mvpMapPoints = std::vector<MapPoint*>(N,static_cast<MapPoint*>(nullptr));
         mvbOutlier = std::vector<bool>(N,false);
 
         // This is done only for the first Frame (or after a change in the calibration)
@@ -119,7 +125,7 @@ namespace emo
 
         for(int i=0;i<N;i++)
         {
-            const cv::KeyPoint &kp = mvKeysUn[i];
+            const cv::KeyPoint &kp = mvKeys[i];
 
             int nGridPosX, nGridPosY;
             if(PosInGrid(kp,nGridPosX,nGridPosY))
@@ -155,9 +161,9 @@ namespace emo
 
         // 3D in camera coordinates
         const cv::Mat Pc = mRcw*P+mtcw;
-        const float &PcX = Pc.at<float>(0);
-        const float &PcY= Pc.at<float>(1);
-        const float &PcZ = Pc.at<float>(2);
+        const auto &PcX = Pc.at<float>(0);
+        const auto &PcY= Pc.at<float>(1);
+        const auto &PcZ = Pc.at<float>(2);
 
         // Check positive depth
         if(PcZ<0.0f)
@@ -237,7 +243,7 @@ namespace emo
 
                 for(size_t j=0, jend=vCell.size(); j<jend; j++)
                 {
-                    const cv::KeyPoint &kpUn = mvKeysUn[vCell[j]];
+                    const cv::KeyPoint &kpUn = mvKeys[vCell[j]];
                     if(bCheckLevels)
                     {
                         if(kpUn.octave<minLevel)
@@ -259,6 +265,32 @@ namespace emo
         return vIndices;
     }
 
+    void Frame::derotateKeys(const cv::Mat& f_rotation_r )
+    {
+        m_derotatedKeys.clear();
+//        m_derotatedKeys.resize(mvKeys.size());
+        const cv::Mat l_invK = m_camera.toK().inv();
+        const cv::Mat l_K = m_camera.toK();
+        cv::Mat l_homoKey = cv::Mat::zeros(3,1, CV_32F);
+        for(const auto& l_curKey : mvKeys)
+        {
+            l_homoKey.at<float>(0) = l_curKey.pt.x;
+            l_homoKey.at<float>(1) = l_curKey.pt.y;
+            l_homoKey.at<float>(2) = 1;
+            cv::Mat l_normlizedKey = l_invK * l_homoKey;
+//            auto t1 = l_normlizedKey.at<float>(0);
+//            auto t2 = l_normlizedKey.at<float>(1);
+//            auto t3 = l_normlizedKey.at<float>(2);
+            cv::Mat l_deroatedNormKey = f_rotation_r*l_normlizedKey;
+            cv::Mat l_deroatedKey = l_K*l_deroatedNormKey;
+//            auto t4 = l_deroatedKey.at<float>(0);
+//            auto t5 = l_deroatedKey.at<float>(1);
+//            auto t6 = l_deroatedKey.at<float>(2);
+            cv::Point2f l_imgPoint = {l_deroatedKey.at<float>(0,0)/l_deroatedKey.at<float>(0,2), l_deroatedKey.at<float>(0,1)/l_deroatedKey.at<float>(0,2)};
+            m_derotatedKeys.push_back(l_imgPoint);
+        }
+    }
+
     bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY)
     {
         posX = round((kp.pt.x-mnMinX)*mfGridElementWidthInv);
@@ -277,29 +309,6 @@ namespace emo
         {
             mvKeysUn=mvKeys;
             return;
-        }
-
-        // Fill matrix with points
-        cv::Mat mat(N,2,CV_32F);
-        for(int i=0; i<N; i++)
-        {
-            mat.at<float>(i,0)=mvKeys[i].pt.x;
-            mat.at<float>(i,1)=mvKeys[i].pt.y;
-        }
-
-        // Undistort points
-        mat=mat.reshape(2);
-        cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);
-        mat=mat.reshape(1);
-
-        // Fill undistorted keypoint std::vector
-        mvKeysUn.resize(N);
-        for(int i=0; i<N; i++)
-        {
-            cv::KeyPoint kp = mvKeys[i];
-            kp.pt.x=mat.at<float>(i,0);
-            kp.pt.y=mat.at<float>(i,1);
-            mvKeysUn[i]=kp;
         }
     }
 

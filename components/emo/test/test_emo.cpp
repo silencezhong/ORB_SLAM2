@@ -6,7 +6,7 @@
 #include <iostream>
 #include <sys/time.h>
 #include <fstream>
-#include <assert.h>
+#include <cassert>
     
 #include "Frame.h"
 #include "ORBextractor.h"
@@ -19,9 +19,6 @@ using namespace emo;
 
 int main( int argc, char** argv )
 {
-    struct timeval tv_start_all, tv_end_all;
-    gettimeofday(&tv_start_all, NULL);
-
      // *** Parse and load input images
     char *l_img1Name_p = argv[1];
     char *l_img2Name_p = argv[2];
@@ -33,7 +30,6 @@ int main( int argc, char** argv )
         cvtColor(l_fisrsImg, l_fisrsImg, CV_RGB2GRAY);
         cvtColor(l_2ndImg, l_2ndImg, CV_RGB2GRAY);
     }
-    cv::Size sz = l_fisrsImg.size();
 
     // init camera
     const cv::FileStorage l_Settings( argv[3], cv::FileStorage::READ);
@@ -78,6 +74,11 @@ int main( int argc, char** argv )
     int fMinThFAST = l_Settings["ORBextractor.minThFAST"];
     auto l_orbExtractor = ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
+//    file << "matName" << l_fisrsImg;
+//    auto l1 =l_pinholeCamera->toK();
+//    auto l2 = l_pinholeCamera->toK().clone();
+//    file << "l1" << l1;
+//    file << "l1clone" << l2;
     // init frames
     Frame m_firstFrame = Frame(l_fisrsImg, 1, l_orbExtractor,*l_pinholeCamera, l_pinholeCamera->toK(), l_DistCoef);
     std::vector<cv::Point2f> mvbPrevMatched;
@@ -90,7 +91,6 @@ int main( int argc, char** argv )
     ORBmatcher  l_orbMatcher  = ORBmatcher(1.0, true);
 
     // match the ORB features
-    auto num = m_firstFrame.mvKeys.size();
     assert(m_firstFrame.mvKeys.size() > 100);
     assert(m_2ndFrame.mvKeys.size() > 100);
     std::vector<int> mvIniMatches;
@@ -104,20 +104,18 @@ int main( int argc, char** argv )
     {
         if(mvIniMatches[i]>=0)
         {
-            l_Matches12Vec.push_back(make_pair(i,mvIniMatches[i]));
+            l_Matches12Vec.emplace_back(make_pair(i,mvIniMatches[i]));
         }
     }
     cv::Mat mask = cv::Mat::zeros(l_visImag.size(), l_visImag.type());
-    for(int l_idx_i = 0; l_idx_i < l_Matches12Vec.size(); ++l_idx_i)
+    for(auto& l_match_r : l_Matches12Vec)
     {
-        cv::KeyPoint l_point1 = m_firstFrame.mvKeys[l_Matches12Vec[l_idx_i].first];
-        cv::KeyPoint l_point2 = m_2ndFrame.mvKeys[l_Matches12Vec[l_idx_i].second];
+        cv::KeyPoint l_point1 = m_firstFrame.mvKeys[l_match_r.first];
+        cv::KeyPoint l_point2 = m_2ndFrame.mvKeys[l_match_r.second];
 
         cv::line(mask, l_point1.pt, l_point2.pt, cv::Scalar(0, 0,256),2);
     }
-//
-//    cv::FileStorage file("l_fisrsImg.ext", cv::FileStorage::WRITE);
-//    file << "matName" << l_fisrsImg;
+
     cv::Mat img;
     add(l_visImag, mask, img);
     imshow("test", img);
@@ -127,8 +125,30 @@ int main( int argc, char** argv )
     cv::Mat tcw; // Current Camera Translation
     vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
     std::vector<cv::Point3f> mvIniP3D;
-    if(l_Initializer.Initialize(m_firstFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
+    l_Initializer.m_visImg = l_visImag.clone();
+    if(l_Initializer.Initialize(m_2ndFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
+        cv::FileStorage file("test.ext", cv::FileStorage::WRITE);
+        file << "Rcw" << Rcw;
+        // deroate keys in frame2 and visualize the derotated flow
+        const auto& l_inlierFlagVec_r = l_Initializer.getInlierFlag();
+        assert(l_inlierFlagVec_r.size() == l_Matches12Vec.size());
+        m_2ndFrame.derotateKeys(Rcw.inv());
+        cv::Mat maskDerotaedFlow = cv::Mat::zeros(l_visImag.size(), l_visImag.type());
+        for(int l_idx_i = 0; l_idx_i < l_Matches12Vec.size(); ++l_idx_i)
+        {
+            if(!l_inlierFlagVec_r[l_idx_i]) continue;
+            cv::KeyPoint l_point1 = m_firstFrame.mvKeys[l_Matches12Vec[l_idx_i].first];
+            cv::Point2f l_point2 = m_2ndFrame.m_derotatedKeys[l_Matches12Vec[l_idx_i].second];
+
+            cv::line(maskDerotaedFlow, l_point1.pt, l_point2, cv::Scalar(0, 0,256),2);
+        }
+
+        cv::Mat img2;
+        add(l_visImag, maskDerotaedFlow, img);
+        imshow("test2", img);
+        cvWaitKey(0);
+
         for (size_t i = 0, iend = mvIniMatches.size(); i < iend; i++)
         {
             if (mvIniMatches[i] >= 0 && !vbTriangulated[i])
