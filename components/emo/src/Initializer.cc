@@ -80,7 +80,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
 
     // Generate sets of 8 points for each RANSAC iteration
     mvSets = vector< vector<size_t> >(mMaxIterations,vector<size_t>(8,0));
-    std::default_random_engine l_randNumEngine;// seed is 0
+    std::default_random_engine l_randNumEngine(0);// seed is 0
 
     for(int it=0; it<mMaxIterations; it++)
     {
@@ -908,7 +908,8 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
             continue;
 
         vCosParallax.push_back(cosParallax);
-        vP3D[vMatches12[i].first] = cv::Point3f(p3dC1.at<float>(0),p3dC1.at<float>(1),p3dC1.at<float>(2));
+        const cv::Point3f l_point3f(p3dC1.at<float>(0),p3dC1.at<float>(1),p3dC1.at<float>(2));
+        vP3D[vMatches12[i].first] = l_point3f;
         nGood++;
 
         if(cosParallax<0.99998)

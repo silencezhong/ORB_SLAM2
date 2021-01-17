@@ -34,13 +34,13 @@ namespace emo
     //Copy Constructor
     Frame::Frame(const Frame &frame)
             :m_ORBextractor(frame.m_ORBextractor),
-             mTimeStamp(frame.mTimeStamp),m_camera(frame.m_camera), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
+             mTimeStamp(frame.mTimeStamp),m_camera(frame.m_camera),
              N(frame.N), mvKeys(frame.mvKeys),
              mvuRight(frame.mvuRight),
              mvDepth(frame.mvDepth),
              mDescriptors(frame.mDescriptors.clone()),
              mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), mnId(frame.mnId),
-             mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
+             mnScaleLevels(frame.mnScaleLevels),
              mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
              mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
              mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
@@ -56,9 +56,9 @@ namespace emo
 
 
 
-    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, camera::Pinhole& f_pinhole_r, cv::Mat K, cv::Mat &distCoef)
+    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, camera::Pinhole& f_pinhole_r)
             : m_ORBextractor(extractor),
-              mTimeStamp(timeStamp), m_camera(f_pinhole_r), mK(K.clone()), mDistCoef(distCoef.clone()), m_derotatedKeys()
+              mTimeStamp(timeStamp), m_camera(f_pinhole_r), m_derotatedKeys()
     {
 //         auto t1 = mK.at<float>(0,0);
 //        auto t2 = mK.at<float>(0,2);
@@ -86,8 +86,6 @@ namespace emo
         if(mvKeys.empty())
             return;
 
-        UndistortKeyPoints();
-
         // Set no stereo information
         mvuRight = std::vector<float>(N,-1);
         mvDepth = std::vector<float>(N,-1);
@@ -103,10 +101,10 @@ namespace emo
             mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
             mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
 
-            fx = K.at<float>(0,0);
-            fy = K.at<float>(1,1);
-            cx = K.at<float>(0,2);
-            cy = K.at<float>(1,2);
+            fx = m_camera.toK().at<float>(0,0);
+            fy = m_camera.toK().at<float>(1,1);
+            cx = m_camera.toK().at<float>(0,2);
+            cy = m_camera.toK().at<float>(1,2);
             invfx = 1.0f/fx;
             invfy = 1.0f/fy;
 
@@ -265,28 +263,21 @@ namespace emo
         return vIndices;
     }
 
-    void Frame::derotateKeys(const cv::Mat& f_rotation_r )
+    void Frame::derotateKeys(const cv::Matx33f& f_rotation_r )
     {
         m_derotatedKeys.clear();
-//        m_derotatedKeys.resize(mvKeys.size());
-        const cv::Mat l_invK = m_camera.toK().inv();
-        const cv::Mat l_K = m_camera.toK();
-        cv::Mat l_homoKey = cv::Mat::zeros(3,1, CV_32F);
+        const cv::Matx33f l_K = cv::Matx33f((float*)m_camera.toK().ptr());
+        const cv::Matx33f l_invK = l_K.inv();
+        cv::Matx31f l_homoKey;
         for(const auto& l_curKey : mvKeys)
         {
-            l_homoKey.at<float>(0) = l_curKey.pt.x;
-            l_homoKey.at<float>(1) = l_curKey.pt.y;
-            l_homoKey.at<float>(2) = 1;
-            cv::Mat l_normlizedKey = l_invK * l_homoKey;
-//            auto t1 = l_normlizedKey.at<float>(0);
-//            auto t2 = l_normlizedKey.at<float>(1);
-//            auto t3 = l_normlizedKey.at<float>(2);
-            cv::Mat l_deroatedNormKey = f_rotation_r*l_normlizedKey;
-            cv::Mat l_deroatedKey = l_K*l_deroatedNormKey;
-//            auto t4 = l_deroatedKey.at<float>(0);
-//            auto t5 = l_deroatedKey.at<float>(1);
-//            auto t6 = l_deroatedKey.at<float>(2);
-            cv::Point2f l_imgPoint = {l_deroatedKey.at<float>(0,0)/l_deroatedKey.at<float>(0,2), l_deroatedKey.at<float>(0,1)/l_deroatedKey.at<float>(0,2)};
+            l_homoKey(0) = l_curKey.pt.x;
+            l_homoKey(1) = l_curKey.pt.y;
+            l_homoKey(2) = 1;
+            cv::Matx31f l_normlizedKey = l_invK * l_homoKey;
+            cv::Matx31f l_deroatedNormKey = f_rotation_r*l_normlizedKey;
+            cv::Matx31f l_deroatedKey = l_K*l_deroatedNormKey;
+            cv::Point2f l_imgPoint = {l_deroatedKey(0,0)/l_deroatedKey(0,2), l_deroatedKey(0,1)/l_deroatedKey(0,2)};
             m_derotatedKeys.push_back(l_imgPoint);
         }
     }
@@ -301,15 +292,6 @@ namespace emo
             return false;
 
         return true;
-    }
-
-    void Frame::UndistortKeyPoints()
-    {
-        if(mDistCoef.at<float>(0)==0.0)
-        {
-            mvKeysUn=mvKeys;
-            return;
-        }
     }
 
     void Frame::ComputeImageBounds(const cv::Mat &imLeft)

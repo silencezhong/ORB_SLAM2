@@ -45,7 +45,7 @@ public:
     Frame(const Frame &frame);
 
     // Constructor for Monocular cameras.
-    Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, camera::Pinhole& f_pinhole_r, cv::Mat K, cv::Mat &distCoef );
+    Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, camera::Pinhole& f_pinhole_r);
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im);
@@ -75,7 +75,7 @@ public:
 
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
 
-    void derotateKeys(const cv::Mat& f_rotation_r );
+    void derotateKeys(const cv::Matx33f& f_rotation_r );
 public:
     // Feature extractor.
     ORBextractor& m_ORBextractor;
@@ -85,21 +85,18 @@ public:
     double mTimeStamp;
 
     // Calibration matrix and OpenCV distortion parameters.
-    cv::Mat mK;
     static float fx;
     static float fy;
     static float cx;
     static float cy;
     static float invfx;
     static float invfy;
-    cv::Mat mDistCoef;
 
     // Number of KeyPoints.
     int N;
 
     // Vector of keypoints (original for visualization) and undistorted (actually used by the system).
     std::vector<cv::KeyPoint> mvKeys;
-    std::vector<cv::KeyPoint> mvKeysUn;
     std::vector<cv::Point2f>  m_derotatedKeys;
 
     // Corresponding stereo coordinate and depth for each keypoint.
@@ -128,9 +125,6 @@ public:
     static long unsigned int nNextId;
     long unsigned int mnId;
 
-    // Reference Keyframe.
-    KeyFrame* mpReferenceKF;
-
     // Scale pyramid info.
     int mnScaleLevels;
     float mfScaleFactor;
@@ -150,11 +144,6 @@ public:
 
 
 private:
-    // Undistort keypoints given OpenCV distortion parameters.
-    // Only for the RGB-D case. Stereo must be already rectified!
-    // (called in the constructor).
-    void UndistortKeyPoints();
-
     // Computes image bounds for the undistorted image (called in the constructor).
     void ComputeImageBounds(const cv::Mat &imLeft);
 
