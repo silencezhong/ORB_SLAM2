@@ -188,7 +188,90 @@ void updateWeight(
     }
 }
 
-const cv::Point2f estimateFOE(
+void estimateScale(
+        std::vector<FlowEntry>& f_flowVec_r,
+        const cv::Point2f& f_FOE_r,
+        const cv::Matx31f& f_derotatedTranslation_r,
+        const cv::Matx31f& f_roadNorm_r,
+        const float f_imgWidth_f,
+        const float f_imgHeight_f)
+{
+    // road homography : x_end = H*x_start = (R + t*n'/d)*x_start, R: rotation, t: translation, n: road normal vector.
+    // notice x_start, x_end is not image coordinate but inv(K)*img_pos, is actually 3d ray from camera center passing through image point on the image plane
+    // in the flow entry x_end is already derotated from end frame to start frame:
+    // inv(R)*x_end = (I + (inv(R)*t)*n'/d)*x_start => x_derotated_end = (I + derotated_t*n'*s) * x_start, let s = 1/d, derotated_t = inv(R)*t
+    // x_derotated_end-x_start = derotated_flow = s*M*x_start, let M = derotated_t * n' is a 3x3 matrix
+    // to optimize E = sum(wi*(derotated_flow - s*M*x_start)²) using weighted least square
+    // using dE/ds = 0 => s = -sum(wi(M*x_start)'*derotated_flow)/sum(wi(M*x_start)'*(M*x_start))
+    //
+    cv::Matx33f l_translationMultiRoadNorm = f_derotatedTranslation_r*f_roadNorm_r.t(); // M
+    std::vector<float> l_numeratorVec; // save (M*x_start)'*derotated_flow
+    std::vector<float> l_denominatorVec; // save (M*x_start)'*(M*x_start)
+    std::vector<float> l_derotatedFlowSqrVec;
+    std::vector<bool>  l_roadFlagVec(f_flowVec_r.size(), false);
+    l_numeratorVec.resize(f_flowVec_r.size());   //(M*x_start)'*derotated_flow
+    l_denominatorVec.resize(f_flowVec_r.size()); //(M*x_start)'*(M*x_start)
+    l_derotatedFlowSqrVec.resize(f_flowVec_r.size());
+
+    // determine the road ROI
+    CLine l_leftRoadLine(cv::Point2f(0, f_imgHeight_f), f_FOE_r);
+    CLine l_rightRoadLine(cv::Point2f(f_imgWidth_f, f_imgHeight_f), f_FOE_r);
+
+    // prepare the calculation
+    for(int l_idx_i = 0; l_idx_i < f_flowVec_r.size(); ++l_idx_i)
+    {
+        FlowEntry& l_flowEntry = f_flowVec_r[l_idx_i];
+        const bool l_isBelowLeftLine_b  = LINE::LINE_RELATION::BELOW_LINE == l_leftRoadLine.checkRelation2Line(l_flowEntry.m_startPoint);
+        const bool l_isBelowRightLine_b = LINE::LINE_RELATION::BELOW_LINE == l_rightRoadLine.checkRelation2Line(l_flowEntry.m_startPoint);
+        if(l_isBelowLeftLine_b && l_isBelowRightLine_b)
+        {
+            l_roadFlagVec[l_idx_i] = true;
+            const cv::Matx31f l_M_multi_xStart = l_translationMultiRoadNorm*l_flowEntry.m_3dRayStartFrame;
+            const cv::Matx31f l_flow = l_flowEntry.m_3dRayDerotatedEndFrame - l_flowEntry.m_3dRayStartFrame;
+            l_denominatorVec[l_idx_i] = (l_M_multi_xStart.t()*l_M_multi_xStart)(0,0);
+            l_numeratorVec[l_idx_i] = (l_M_multi_xStart.t()*l_flow)(0,0);
+            l_derotatedFlowSqrVec[l_idx_i] = (l_flow.t()*l_flow)(0, 0);
+            l_flowEntry.m_weight_f = 1.0f;
+        }
+    }
+
+    for(int l_iter_i = 0; l_iter_i < 5; ++l_iter_i)
+    {
+        float l_denominator_f = 0.0f;
+        float l_numerator_f   = 0.0f;
+        for(int l_idx_i = 0; l_idx_i < f_flowVec_r.size(); ++l_idx_i)
+        {
+            FlowEntry& l_flowEntry = f_flowVec_r[l_idx_i];
+            if(l_roadFlagVec[l_idx_i])
+            {
+                l_denominator_f += l_flowEntry.m_weight_f*l_denominatorVec[l_idx_i];
+                l_numerator_f   += l_flowEntry.m_weight_f*l_numeratorVec[l_idx_i];
+            }
+        }
+        const float  l_s_f = -l_numerator_f/l_denominator_f;
+        //update weight
+        // residual² = (derotated_flow - s*M*x_start)² = derotated_flow'*derotated_flow + s²*(M*x_start)'*(M*x_start) - 2*s*(M*x_start)'*derotated_flow
+        //                                             = derotated_flow'*derotated_flow + s²*l_denominatorVec[l_idx_i] - 2*l_numeratorVec[l_idx_i]
+        for(int l_idx_i = 0; l_idx_i < f_flowVec_r.size(); ++l_idx_i)
+        {
+            FlowEntry& l_flowEntry = f_flowVec_r[l_idx_i];
+            if(l_roadFlagVec[l_idx_i])
+            {
+                const float l_residual = std::sqrt(l_derotatedFlowSqrVec[l_idx_i] + l_s_f*l_s_f*l_denominatorVec[l_idx_i] - 2*l_s_f*l_numeratorVec[l_idx_i]);
+                if(l_residual < 2.0f)
+                {
+                    l_flowEntry.m_weight_f = 1.0f;
+                }
+                else
+                {
+                    l_flowEntry.m_weight_f = 2.0f / l_residual;
+                }
+            }
+        }
+    }
+}
+
+cv::Point2f estimateFOE(
         std::vector<FlowEntry>& f_flowVec_r,
         const cv::Mat& f_img_r)
 {
@@ -227,7 +310,6 @@ const cv::Point2f estimateFOE(
         updateWeight(f_flowVec_r, l_initialFOE, f_img_r);
     }
 
-//    assert((f_flowVec_r.size()-l_smallFlowCount_i) > G_MIN_INITIAL_SET_NUMBER);
     cv::Point2f l_FOE;
     for(int l_iterIdx_i = 0; l_iterIdx_i < 5; ++l_iterIdx_i)
     {
@@ -438,10 +520,11 @@ int main( int argc, char** argv )
         // in the flow entry x_end is already derotated from end frame to start frame:
         // inv(R)*x_end = (I + (inv(R)*t)*n'/d)*x_start => x_derotated_end = (I + derotated_t*n'*s) * x_start, let s = 1/d
         cv::Matx31f l_vanishingLine(0, 1, -l_FOE.y);
-        cv::Matx31f l_roadNormVec = l_K.t()*l_vanishingLine;
+        cv::Matx31f l_roadNorm = l_K.t()*l_vanishingLine;
+        utility::normlize(l_roadNorm);
         cv::Matx31f l_derotatedTranslation = l_derotation*l_translationEnd2Start;
-        cv::Matx33f l_translationMultiRoadNorm = l_derotatedTranslation*l_roadNormVec.t();
-        utility::normlize(l_roadNormVec);
+
+        estimateScale(l_flowVec, l_FOE, l_derotatedTranslation, l_roadNorm, l_imgWidth, l_imgHeight);
 //        // road plane is n'*3dPos + d = 0;
 //        for(const auto& l_flowEntry_r : l_flowVec)
 //        {
