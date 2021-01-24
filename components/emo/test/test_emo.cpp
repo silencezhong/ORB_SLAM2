@@ -5,7 +5,7 @@
 
 #include <iostream>
 #include <cassert>
-    
+
 #include "Frame.h"
 #include "ORBextractor.h"
 #include "Initializer.h"
@@ -70,6 +70,32 @@ namespace utility
     }
 }
 
+template<typename T>
+class optional
+{
+public:
+    optional() : m_data(), m_flag_b(false){}
+    explicit optional(const T& f_data_r) : m_data(f_data_r), m_flag_b(true){}
+
+    optional(const optional&) = default;
+    optional& operator=(const optional&) = delete;
+    ~optional() = default;
+
+    bool isValid() const
+    {
+        return m_flag_b;
+    }
+
+    T getData() const
+    {
+        return m_data;
+    }
+
+private:
+    T m_data;
+    bool m_flag_b;
+};
+
 struct CLine
 {
 public:
@@ -87,11 +113,6 @@ public:
             m_b_f = 0;
             m_c_f = -f_p1_r.x;
         }
-        m_distanceNorminator_f = 1.0f/std::sqrt(m_a_f*m_a_f + m_b_f*m_b_f);
-    }
-
-    CLine(const float f_a_f, const float f_b_f, const float f_c_f) : m_a_f(f_a_f), m_b_f(f_b_f), m_c_f(f_c_f)
-    {
         m_distanceNorminator_f = 1.0f/std::sqrt(m_a_f*m_a_f + m_b_f*m_b_f);
     }
 
@@ -146,9 +167,7 @@ struct FlowEntry
         m_length_f = std::sqrt(m_dx_f*m_dx_f + m_dy_f*m_dy_f);
 
         m_3dRayStartFrame = f_invK_r*utility::imagePoint2homogeneous(m_startPoint);
-//        utility::normlize(m_3dRayStartFrame);
         m_3dRayDerotatedEndFrame = f_invK_r*utility::imagePoint2homogeneous(cv::Point2f(m_startPoint.x + m_dx_f, m_startPoint.y + m_dy_f));
-//        utility::normlize(m_3dRayDerotatedEndFrame);
         m_weight_f = 1.0f;
     }
 
@@ -160,13 +179,6 @@ struct FlowEntry
     float calculatePointdistance2FlowLine(const cv::Point2f& f_point_r)
     {
         return m_flowLine.calculatePointdistance2FlowLine(f_point_r);
-    }
-
-    cv::Mat get3DPosInMat() const
-    {
-        cv::Mat l_3dPos(3, 1 , CV_32F);
-        l_3dPos.at<float>(0,0) = m_unscaled3DPos.x; l_3dPos.at<float>(1,0) = m_unscaled3DPos.y; l_3dPos.at<float>(2,0) = m_unscaled3DPos.z;
-        return l_3dPos;
     }
 
     cv::Point2f getEndPoint() const
@@ -207,7 +219,7 @@ void updateWeight(
     }
 }
 
-float estimateScale(
+optional<float> estimateScale(
         std::vector<FlowEntry>& f_flowVec_r,
         const cv::Point2f& f_FOE_r,
         const cv::Matx31f& f_derotatedTranslation_r,
@@ -256,9 +268,6 @@ float estimateScale(
     CLine l_rightRoadLine(cv::Point2f(f_imgWidth_f, f_imgHeight_f), f_FOE_r);
 
     // prepare the calculation
-    //////////////////debug code
-//    cv::FileStorage file("test.ext", cv::FileStorage::WRITE);
-    //////////////////debug code
     for(int l_idx_i = 0; l_idx_i < f_flowVec_r.size(); ++l_idx_i)
     {
         FlowEntry& l_flowEntry = f_flowVec_r[l_idx_i];
@@ -272,26 +281,19 @@ float estimateScale(
             l_denominatorVec[l_idx_i] = (pow(a1,2)*pow(x,2) + 2*a1*a2*x*y + 2*a1*a3*x - 2*a1*a7*u*pow(x,2) - 2*a1*a8*u*x*y - 2*a1*a9*u*x + pow(a2,2)*pow(y,2) + 2*a2*a3*y - 2*a2*a7*u*x*y - 2*a2*a8*u*pow(y,2) - 2*a2*a9*u*y + pow(a3,2) - 2*a3*a7*u*x - 2*a3*a8*u*y - 2*a3*a9*u + pow(a4,2)*pow(x,2) + 2*a4*a5*x*y + 2*a4*a6*x - 2*a4*a7*v*pow(x,2) - 2*a4*a8*v*x*y - 2*a4*a9*v*x + pow(a5,2)*pow(y,2) + 2*a5*a6*y - 2*a5*a7*v*x*y - 2*a5*a8*v*pow(y,2) - 2*a5*a9*v*y + pow(a6,2) - 2*a6*a7*v*x - 2*a6*a8*v*y - 2*a6*a9*v + pow(a7,2)*pow(u,2)*pow(x,2) + pow(a7,2)*pow(v,2)*pow(x,2) + 2*a7*a8*pow(u,2)*x*y + 2*a7*a8*pow(v,2)*x*y + 2*a7*a9*pow(u,2)*x + 2*a7*a9*pow(v,2)*x + pow(a8,2)*pow(u,2)*pow(y,2) + pow(a8,2)*pow(v,2)*pow(y,2) + 2*a8*a9*pow(u,2)*y + 2*a8*a9*pow(v,2)*y + pow(a9,2)*pow(u,2) + pow(a9,2)*pow(v,2));
             l_numeratorVec[l_idx_i] = a3*u + a6*v - a3*x - a6*y - a9*pow(u,2) - a9*pow(v,2) - a1*pow(x,2) - a5*pow(y,2) + a7*u*pow(x,2) - a7*pow(u,2)*x - a7*pow(v,2)*x - a8*pow(u,2)*y + a8*v*pow(y,2) - a8*pow(v,2)*y + a1*u*x + a9*u*x + a2*u*y + a4*v*x + a5*v*y + a9*v*y - a2*x*y - a4*x*y + a8*u*x*y + a7*v*x*y;
             l_flowEntry.m_weight_f = 1.0f;
-            //////////////////debug code
-//            file <<"idx" <<l_idx_i;
-//            file << "start" << l_flowEntry.m_startPoint;
-//            file << "end"   << l_flowEntry.getEndPoint();
-            //////////////////debug code
         }
     }
-    //////////////////debug log code
-//    file.release();
-    //////////////////debug log code
 
     // lambda, calculate residual
     auto l_calcResidual = [&l_translationMultiRoadNorm](const cv::Matx31f& f_start_r, const cv::Matx31f& f_end_r, const float l_s_f)->float
     {
-        const cv::Matx33f A = cv::Matx33f::eye() + l_s_f*l_translationMultiRoadNorm;
-        const auto l_crossProd = utility::toPoint(f_start_r).cross(utility::toPoint(l_s_f*A*f_end_r));
-        return static_cast<float>(cv::norm(l_crossProd));
+        const cv::Matx33f A = cv::Matx33f::eye() - l_s_f*l_translationMultiRoadNorm;
+        auto l_predEnd = A*f_start_r;
+        l_predEnd *= 1.0f/l_predEnd(2);
+        return static_cast<float>(cv::norm(f_end_r - l_predEnd));
     };
     float  l_s_f = 0.0f;
-    for(int l_iter_i = 0; l_iter_i < 3; ++l_iter_i)
+    for(int l_iter_i = 0; l_iter_i < 4; ++l_iter_i)
     {
         float l_denominator_f = 0.0f;
         float l_numerator_f   = 0.0f;
@@ -306,8 +308,6 @@ float estimateScale(
         }
         l_s_f = -l_numerator_f/l_denominator_f;
         //update weight
-        // residual² = (derotated_flow - s*M*x_start)² = derotated_flow'*derotated_flow + s²*(M*x_start)'*(M*x_start) - 2*s*(M*x_start)'*derotated_flow
-        //                                             = derotated_flow'*derotated_flow + s²*l_denominatorVec[l_idx_i] - 2*l_numeratorVec[l_idx_i]
         for(int l_idx_i = 0; l_idx_i < f_flowVec_r.size(); ++l_idx_i)
         {
             FlowEntry& l_flowEntry = f_flowVec_r[l_idx_i];
@@ -322,22 +322,29 @@ float estimateScale(
 //                cvWaitKey(0);
                 /////////////////////////////// debug vis code
                 const float l_residual = l_calcResidual(l_flowEntry.m_3dRayStartFrame, l_flowEntry.m_3dRayDerotatedEndFrame, l_s_f);
-                if(l_residual < 1.0f)
+                if(l_residual < 0.25f)
                 {
                     l_flowEntry.m_weight_f = 1.0f;
                 }
                 else
                 {
-                    l_flowEntry.m_weight_f = 1.0f / l_residual;
+                    l_flowEntry.m_weight_f = 0.25f / l_residual;
                 }
             }
         }
     }
 
-    return 1.0f/l_s_f;
+    if(std::abs(l_s_f) > std::numeric_limits<float>::min())
+    {
+        return optional<float>(1.0f/l_s_f);
+    }
+    else
+    {
+        return optional<float>();
+    }
 }
 
-cv::Point2f estimateFOE(
+optional<cv::Point2f> estimateFOE(
         std::vector<FlowEntry>& f_flowVec_r,
         const cv::Mat& f_img_r)
 {
@@ -413,7 +420,7 @@ cv::Point2f estimateFOE(
 //        cvWaitKey(0);
 //        /////////////////////////////// debug vis code
     }
-    return l_FOE;
+    return optional<cv::Point2f>(l_FOE);
 }
 
 int main( int argc, char** argv )
@@ -576,7 +583,9 @@ int main( int argc, char** argv )
         cv::Mat img2;
         add(l_visImag, maskDerotaedFlow, img2);
         /////////////////////////////// debug vis code
-        const cv::Point2f l_FOE = estimateFOE(l_flowVec, img2.clone());
+        const auto l_result = estimateFOE(l_flowVec, img2.clone());
+        assert(l_result.isValid());
+        const cv::Point2f l_FOE = l_result.getData();
 
         /////////////////////////////// debug vis code
         cv::line(maskDerotaedFlow, l_FOE, cv::Point2f(0,l_imgHeight), cv::Scalar(0, 0,256),2);
@@ -601,46 +610,33 @@ int main( int argc, char** argv )
         file.release();
         ///////////////////////////////debug export code
 
-        const float l_d_f = estimateScale(l_flowVec, l_FOE, l_derotatedTranslation, l_roadNorm, l_imgWidth, l_imgHeight, l_visImag);
-        // recover homography matrix
-        // test estimated homography
-        cv::Matx33f H = cv::Matx33f::eye() - l_derotatedTranslation*l_roadNorm.t()*(1.0f/l_d_f);
-        H = l_K*H*l_invK;
-        H = H*(1.0f/H(2,2));
-
-        /////////////////////////////// debug vis code
-        cv::Mat img;
-        cv::Mat mask = cv::Mat::zeros(l_visImag.size(), l_visImag.type());
-        for(int l_i = 0; l_i < 12; ++l_i)
+        const auto l_d_f = estimateScale(l_flowVec, l_FOE, l_derotatedTranslation, l_roadNorm, l_imgWidth, l_imgHeight, l_visImag);
+        if(l_d_f.isValid())
         {
-            for(int l_j = 0; l_j < 10; ++l_j)
-            {
-                cv::Point2f l_start = cv::Point2f(100.0f+l_i*100.0f, 200.0f+l_j*15.0f);
-                cv::Matx31f l_end = H*cv::Matx31f(100.0f+l_i*100.0f, 200.0f+l_j*15.0f, 1.0f);
-                cv::Point2f l_endPoint = cv::Point2f(l_end(0)/l_end(2), l_end(1)/l_end(2));
-                cv::line(mask, l_start, l_endPoint, cv::Scalar(0, 0,256),2);
-            }
-        }
-//        cv::Point2f l_start = cv::Point2f(800.0f, 300.0f);
-//        cv::Matx31f l_end = H*cv::Matx31f(800.0f, 300.0f, 1.0f);
-//        cv::Point2f l_endPoint = cv::Point2f(l_end(0)/l_end(2), l_end(1)/l_end(2));
-//        cv::line(mask, l_start, l_endPoint, cv::Scalar(0, 0,256),2);
+            // recover homography matrix
+            // test estimated homography
+            cv::Matx33f H = cv::Matx33f::eye() - l_derotatedTranslation*l_roadNorm.t()*(1.0f/l_d_f.getData());
+            H = l_K*H*l_invK;
+            H = H*(1.0f/H(2,2));
 
-        add(l_visImag, mask, img);
-        imshow("test3", img);
-        cvWaitKey(0);
-        /////////////////////////////// debug vis code
-//        // road plane is n'*3dPos + d = 0;
-//        for(const auto& l_flowEntry_r : l_flowVec)
-//        {
-//            if(l_flowEntry_r.m_startPoint.y > l_FOE.y)
-//            {
-//                const cv::Mat l_unscaled3DPos = l_flowEntry_r.get3DPosInMat();
-//                const cv::Mat l_d = -l_roadNormVec.t()*l_unscaled3DPos;
-//                const float l_dd_f = l_d.at<float>(0,0);
-//                int a = 0;
-//            }
-//        }
+            /////////////////////////////// debug vis code
+            cv::Mat img;
+            cv::Mat mask = cv::Mat::zeros(l_visImag.size(), l_visImag.type());
+            for(int l_i = 0; l_i < 12; ++l_i)
+            {
+                for(int l_j = 0; l_j < 10; ++l_j)
+                {
+                    cv::Point2f l_start = cv::Point2f(100.0f+l_i*100.0f, 200.0f+l_j*15.0f);
+                    cv::Matx31f l_end = H*cv::Matx31f(100.0f+l_i*100.0f, 200.0f+l_j*15.0f, 1.0f);
+                    cv::Point2f l_endPoint = cv::Point2f(l_end(0)/l_end(2), l_end(1)/l_end(2));
+                    cv::line(mask, l_start, l_endPoint, cv::Scalar(0, 0,256),2);
+                }
+            }
+            add(l_visImag, mask, img);
+            imshow("test3", img);
+            cvWaitKey(0);
+            /////////////////////////////// debug vis code
+        }
     }
 }
 
