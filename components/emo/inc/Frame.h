@@ -45,7 +45,7 @@ public:
     Frame(const Frame &frame);
 
     // Constructor for Monocular cameras.
-    Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, camera::Pinhole& f_pinhole_r);
+    Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, const camera::Pinhole& f_pinhole_r);
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im);
@@ -79,7 +79,7 @@ public:
 public:
     // Feature extractor.
     ORBextractor& m_ORBextractor;
-    camera::Pinhole& m_camera;
+    const camera::Pinhole& m_camera;
 
     // Frame timestamp.
     double mTimeStamp;

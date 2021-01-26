@@ -28,7 +28,8 @@ set(SRC_LISTS
         src/MapPoint.cc
         src/Optimizer.cc
         src/ORBextractor.cc
-        src/ORBmatcher.cc)
+        src/ORBmatcher.cc
+        src/EgoMotion.cpp)
 
 #generate lib
 ADD_LIBRARY(${PROJECT_NAME} ${EMO_LIB_TYPE} ${SRC_LISTS})

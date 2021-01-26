@@ -36,7 +36,7 @@ const int ORBmatcher::TH_HIGH = 100;
 const int ORBmatcher::TH_LOW = 70;
 const int ORBmatcher::HISTO_LENGTH = 30;
 
-ORBmatcher::ORBmatcher(float nnratio, bool checkOri): mfNNratio(nnratio), mbCheckOrientation(checkOri)
+ORBmatcher::ORBmatcher(float nnratio , bool checkOri): mfNNratio(nnratio), mbCheckOrientation(checkOri)
 {
 }
 

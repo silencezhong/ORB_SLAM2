@@ -31,23 +31,17 @@ using namespace std;
 namespace emo
 {
 
-Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iterations)
-    : m_MatchesInliersH(),
-      m_MatchesInliersF(),
-      m_recoverType(RECOVER_TYPE::DEFAULT)
+bool Initializer::Initialize(
+        const Frame &ReferenceFrame, float sigma, int iterations,
+        const Frame &CurrentFrame, const vector<int> &vMatches12, cv::Mat &R21, cv::Mat &t21,
+        vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
 {
+    m_recoverType = RECOVER_TYPE::DEFAULT;
     mK = ReferenceFrame.m_camera.toK();
-
     mvKeys1 = ReferenceFrame.mvKeys;
-
     mSigma = sigma;
     mSigma2 = sigma*sigma;
     mMaxIterations = iterations;
-}
-
-bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12, cv::Mat &R21, cv::Mat &t21,
-                             vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated)
-{
     // Fill structures with current keypoints and matches with reference frame
     // Reference Frame: 1, Current Frame: 2
     mvKeys2 = CurrentFrame.mvKeys;

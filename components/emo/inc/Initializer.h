@@ -45,12 +45,18 @@ class Initializer
 public:
 
     // Fix the reference frame
-    explicit Initializer(const Frame &ReferenceFrame, float sigma = 1.0, int iterations = 200);
+    Initializer() = default;
+    ~Initializer() = default;
+
+    Initializer(const Initializer&) = delete;
+    Initializer& operator=(const Initializer&) = delete;
 
     // Computes in parallel a fundamental matrix and a homography
     // Selects a model and tries to recover the motion and the structure from motion
-    bool Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12,
-                    cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated);
+    bool Initialize(
+            const Frame &ReferenceFrame, float sigma, int iterations,
+            const Frame &CurrentFrame, const vector<int> &vMatches12,
+            cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated);
 
     const vector<bool>& getInlierFlag() const
     {

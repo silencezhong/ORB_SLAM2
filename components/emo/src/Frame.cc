@@ -56,7 +56,7 @@ namespace emo
 
 
 
-    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, camera::Pinhole& f_pinhole_r)
+    Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor& extractor, const camera::Pinhole& f_pinhole_r)
             : m_ORBextractor(extractor),
               mTimeStamp(timeStamp), m_camera(f_pinhole_r), m_derotatedKeys()
     {

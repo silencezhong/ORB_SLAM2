@@ -442,6 +442,7 @@ int main( int argc, char** argv )
     assert(l_Settings.isOpened());
     float fx, fy, cx, cy;
 
+
     cv::FileNode node = l_Settings["PerspectiveCamera.fx"];
     assert(!node.empty() && node.isReal());
     fx = node.real();
@@ -454,8 +455,11 @@ int main( int argc, char** argv )
     node = l_Settings["PerspectiveCamera.cy"];
     assert(!node.empty() && node.isReal());
     cy = node.real();
+    node = l_Settings["PerspectiveCamera.height2road"];
+    assert(!node.empty() && node.isReal());
+    const float l_cameraHeight_f = node.real();
     vector<float> vCamCalib{fx,fy,cx,cy};
-    auto l_pinholeCamera = camera::Pinhole(vCamCalib);
+    auto l_pinholeCamera = camera::Pinhole(vCamCalib, l_cameraHeight_f);
 
     // Distortion parameters
     cv::Mat l_DistCoef(4,1,CV_32F);
@@ -489,7 +493,7 @@ int main( int argc, char** argv )
     auto l_orbExtractor = ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
     //////////////////debug code
-    cv::FileStorage file("test.ext", cv::FileStorage::WRITE);
+//    cv::FileStorage file("test.ext", cv::FileStorage::WRITE);
 //    file << "matName" << l_fisrsImg;
 //    auto l1 =l_pinholeCamera.toK();
 //    file << "l1" << l1;
@@ -501,12 +505,13 @@ int main( int argc, char** argv )
     //////////////////debug code
     // init frames
     Frame m_firstFrame = Frame(l_fisrsImg, 1, l_orbExtractor,l_pinholeCamera);
+    Frame m_2ndFrame = Frame(l_2ndImg, 1, l_orbExtractor, l_pinholeCamera);
+
     std::vector<cv::Point2f> mvbPrevMatched;
     mvbPrevMatched.resize(m_firstFrame.mvKeys.size());
     for(size_t i=0; i<m_firstFrame.mvKeys.size(); i++)
         mvbPrevMatched[i]=m_firstFrame.mvKeys[i].pt;
 
-    Frame m_2ndFrame = Frame(l_2ndImg, 1, l_orbExtractor, l_pinholeCamera);
     ORBmatcher  l_orbMatcher  = ORBmatcher(1.0, true);
 
     // match the ORB features
@@ -547,9 +552,9 @@ int main( int argc, char** argv )
     cv::Mat tcw; // Current Camera Translation
     vector<bool> vbTriangulated; // Triangulated Correspondences (mvIniMatches)
     std::vector<cv::Point3f> mvIniP3D;
-    Initializer l_Initializer = Initializer(m_firstFrame,1.0,200);
+    Initializer l_Initializer;
     l_Initializer.m_visImg = l_visImag.clone();
-    if(l_Initializer.Initialize(m_2ndFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
+    if(l_Initializer.Initialize(m_firstFrame,1.0,200, m_2ndFrame, mvIniMatches, Rcw, tcw, mvIniP3D, vbTriangulated))
     {
 //        cv::FileStorage file("test.ext", cv::FileStorage::WRITE);
 //        file << "Rcw" << Rcw;
@@ -566,8 +571,6 @@ int main( int argc, char** argv )
         cv::Mat maskDerotaedFlow = cv::Mat::zeros(l_visImag.size(), l_visImag.type());
         std::vector<FlowEntry> l_flowVec;
 
-
-
         for(int l_idx_i = 0; l_idx_i < l_Matches12Vec.size(); ++l_idx_i)
         {
             if(!l_inlierFlagVec_r[l_idx_i]) continue;
@@ -583,6 +586,7 @@ int main( int argc, char** argv )
         cv::Mat img2;
         add(l_visImag, maskDerotaedFlow, img2);
         /////////////////////////////// debug vis code
+
         const auto l_result = estimateFOE(l_flowVec, img2.clone());
         assert(l_result.isValid());
         const cv::Point2f l_FOE = l_result.getData();
@@ -604,10 +608,11 @@ int main( int argc, char** argv )
         cv::Matx31f l_roadNorm = l_K.t()*l_vanishingLine;
         utility::normlize(l_roadNorm);
         cv::Matx31f l_derotatedTranslation = l_derotation*l_translationEnd2Start;
+
         ///////////////////////////////debug export code
-        file << "l_roadNorm" << cv::Mat(l_roadNorm);
-        file<<"l_deroatedTranslation"<<cv::Mat(l_derotatedTranslation);
-        file.release();
+//        file << "l_roadNorm" << cv::Mat(l_roadNorm);
+//        file<<"l_deroatedTranslation"<<cv::Mat(l_derotatedTranslation);
+//        file.release();
         ///////////////////////////////debug export code
 
         const auto l_d_f = estimateScale(l_flowVec, l_FOE, l_derotatedTranslation, l_roadNorm, l_imgWidth, l_imgHeight, l_visImag);
@@ -618,6 +623,7 @@ int main( int argc, char** argv )
             cv::Matx33f H = cv::Matx33f::eye() - l_derotatedTranslation*l_roadNorm.t()*(1.0f/l_d_f.getData());
             H = l_K*H*l_invK;
             H = H*(1.0f/H(2,2));
+            const float l_scaleTo3DWrold_f = l_cameraHeight_f/std::abs(l_d_f.getData());
 
             /////////////////////////////// debug vis code
             cv::Mat img;
