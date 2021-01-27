@@ -25,12 +25,19 @@
 #include <Eigen/Geometry>
 
 namespace camera {
+    enum class CAMERA_TYPE
+    {
+        CAM_PINHOLE,
+        CAM_FISHEYE
+    };
+
     class GeometricCamera {
     public:
         GeometricCamera(const std::vector<float> &_vParameters, const float f_height2Road_f)
         : mvParameters(_vParameters),
           m_height2Road_f(f_height2Road_f){}
         ~GeometricCamera() = default;
+        GeometricCamera() = default;
 
         virtual cv::Point2f project(const cv::Point3f &p3D) = 0;
         virtual cv::Point2f project(const cv::Mat& m3D) = 0;
@@ -66,10 +73,7 @@ namespace camera {
 
         unsigned int GetId() { return mnId; }
 
-        unsigned int GetType() { return mnType; }
-
-        const unsigned int CAM_PINHOLE = 0;
-        const unsigned int CAM_FISHEYE = 1;
+        CAMERA_TYPE GetType() { return mnType; }
 
         static long unsigned int nNextId;
 
@@ -81,11 +85,11 @@ namespace camera {
     protected:
         std::vector<float> mvParameters;
 
-        const float m_height2Road_f;
+        float m_height2Road_f;
 
         unsigned int mnId;
 
-        unsigned int mnType;
+        CAMERA_TYPE mnType;
     };
 }
 

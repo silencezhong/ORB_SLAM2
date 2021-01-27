@@ -25,6 +25,7 @@
 #include "GeometricCamera.h"
 #include "TwoViewReconstruction.h"
 
+
 namespace camera {
     class Pinhole : public GeometricCamera {
 
@@ -32,15 +33,17 @@ namespace camera {
         Pinhole(const std::vector<float>& _vParameters,  const float f_height2Road_f) : GeometricCamera(_vParameters, f_height2Road_f), tvr(nullptr) {
             assert(mvParameters.size() == 4);
             mnId=nNextId++;
-            mnType = CAM_PINHOLE;
+            mnType = CAMERA_TYPE::CAM_PINHOLE;
         }
 
         explicit Pinhole(Pinhole* pPinhole) : GeometricCamera(pPinhole->mvParameters, pPinhole->m_height2Road_f), tvr(nullptr) {
             assert(mvParameters.size() == 4);
             mnId=nNextId++;
-            mnType = CAM_PINHOLE;
+            mnType = CAMERA_TYPE::CAM_PINHOLE;
         }
 
+        Pinhole() = default;
+        Pinhole& operator=(const Pinhole&) = default;
 
         ~Pinhole(){
             delete tvr;

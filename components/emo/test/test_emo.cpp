@@ -1,4 +1,4 @@
-
+#include "gtest/gtest.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -441,7 +441,6 @@ int main( int argc, char** argv )
     const cv::FileStorage l_Settings( argv[3], cv::FileStorage::READ);
     assert(l_Settings.isOpened());
     float fx, fy, cx, cy;
-
 
     cv::FileNode node = l_Settings["PerspectiveCamera.fx"];
     assert(!node.empty() && node.isReal());

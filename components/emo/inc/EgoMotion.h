@@ -4,7 +4,6 @@
 
 #ifndef EMO_EGOMOTION_H
 #define EMO_EGOMOTION_H
-
 #include <vector>
 #include "camera/inc/PinholeCamera.h"
 
@@ -215,11 +214,10 @@ namespace emo {
         // init map
         void createInitialMap(const cv::Mat &f_img1_r, const cv::Mat &f_img2_r);
 
-    private:
-
         // estimate a transform from camera coordinate of f_img2_r to camera coordinate of f_img1_r
         utility::optional<cv::Matx44f> estimateMotionBetweenTwoFrames(const cv::Mat& f_img1_r, const cv::Mat& f_img2_r);
 
+    private:
         // estimate FOE using deroated flow
         utility::optional<cv::Point2f> estimateFOE( std::vector<FlowEntry>& f_derotatedFlowVec_r);
 

@@ -59,5 +59,16 @@ target_include_directories(test PUBLIC
         ${PROJECT_SOURCE_DIR}/inc
         ${PROJECT_SOURCE_DIR}/../)
 
+#unit test
+add_executable(unit_test test/unit_test.cpp)
+target_link_libraries(unit_test
+        gtest
+        ${PROJECT_NAME}
+        ${PROJECT_SOURCE_DIR}/../camera/lib/libcamera.so)
+target_include_directories(unit_test PUBLIC
+        ${PROJECT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}/inc
+        ${PROJECT_SOURCE_DIR}/../)
+
 
 
