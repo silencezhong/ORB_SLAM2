@@ -12,6 +12,7 @@
 #include "Initializer.h"
 #include "ORBmatcher.h"
 #include "ORBextractor.h"
+#include "Optimizer.h"
 
 namespace emo {
 
@@ -69,14 +70,11 @@ namespace emo {
             f_3dVec_r(0) /= l_norm_f; f_3dVec_r(1) /= l_norm_f; f_3dVec_r(2) /= l_norm_f;
         }
 
-        void copyRotation2Transform(const cv::Matx33f& f_rotation_r, cv::Matx44f& f_transform_r)
+        void copyRT2Transform(const cv::Matx33f& f_rotation_r, const cv::Matx31f& f_translation_r, cv::Matx44f& f_transform_r)
         {
             f_transform_r(0, 0) = f_rotation_r(0,0); f_transform_r(0, 1) = f_rotation_r(0,1); f_transform_r(0, 2) = f_rotation_r(0,2);
             f_transform_r(1, 0) = f_rotation_r(1,0); f_transform_r(1, 1) = f_rotation_r(1,1); f_transform_r(1, 2) = f_rotation_r(1,2);
             f_transform_r(2, 0) = f_rotation_r(2,0); f_transform_r(2, 1) = f_rotation_r(2,1); f_transform_r(2, 2) = f_rotation_r(2,2);
-        }
-        void copyTranslation2Transform(const cv::Matx31f& f_translation_r, cv::Matx44f& f_transform_r)
-        {
             f_transform_r(0, 3) = f_translation_r(0); f_transform_r(1, 3) = f_translation_r(1); f_transform_r(2, 3) = f_translation_r(2);
         }
     }
@@ -141,13 +139,15 @@ namespace emo {
 
     struct FlowEntry
     {
-        FlowEntry(const cv::Point2f& f_startPoint_r, const float f_dx_f, const float f_dy_f, const cv::Point3f& f_unscaled3DPos_r, const cv::Matx33f& f_invK_r)
+        FlowEntry(const cv::Point2f& f_startPoint_r, const float f_dx_f, const float f_dy_f, const int f_idInFeatureVecFrame1_i, const int f_idInFeatureVecFrame2_i, const cv::Point3f& f_unscaled3DPos_r, const cv::Matx33f& f_invK_r)
                 : m_startPoint(f_startPoint_r),
                   m_dx_f(f_dx_f),
                   m_dy_f(f_dy_f),
+                  m_idInFeatureVecFrame1( f_idInFeatureVecFrame1_i),
+                  m_idInFeatureVecFrame2( f_idInFeatureVecFrame2_i),
                   m_flowLine(m_startPoint, cv::Point2f(m_startPoint.x + m_dx_f, m_startPoint.y + m_dy_f)),
                   m_weight_f(1.0f),
-                  m_unscaled3DPos(f_unscaled3DPos_r)
+                  m_3dPos(f_unscaled3DPos_r)
         {
             m_length_f = std::sqrt(m_dx_f*m_dx_f + m_dy_f*m_dy_f);
 
@@ -171,10 +171,17 @@ namespace emo {
             return cv::Point2f(m_startPoint.x + m_dx_f, m_startPoint.y + m_dy_f);
         }
 
-        cv::Point2f m_startPoint;
-        float       m_dx_f;
-        float       m_dy_f;
-        float       m_length_f;
+        bool is3DValid() const
+        {
+            return m_3dPos.z > 0.0f;
+        }
+
+        const cv::Point2f m_startPoint;
+        const float       m_dx_f;
+        const float       m_dy_f;
+        const int         m_idInFeatureVecFrame1;
+        const int         m_idInFeatureVecFrame2;
+        float             m_length_f;
 
         CLine        m_flowLine;
 
@@ -186,7 +193,7 @@ namespace emo {
         float m_weight_f;
 
         // unscaled 3d Postion, estimated by decomposing F/H and triangulation
-        cv::Point3f m_unscaled3DPos;
+        cv::Point3f m_3dPos;
     };
 
     constexpr float G_MIN_FLOW_LENGTH_THRESHOLD_F = 2.0f;
@@ -202,7 +209,8 @@ namespace emo {
         m_orbExtractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST),
         m_orbMatcher(1.0f, true),// ToDo: check meaning of first parameter
         m_initializer(),
-        m_map()
+        m_map(),
+        m_flowVec()
         {
 
         }
@@ -219,7 +227,7 @@ namespace emo {
 
     private:
         // estimate FOE using deroated flow
-        utility::optional<cv::Point2f> estimateFOE( std::vector<FlowEntry>& f_derotatedFlowVec_r);
+        static utility::optional<cv::Point2f> estimateFOE( std::vector<FlowEntry>& f_derotatedFlowVec_r);
 
         // estimate the scale of unscaled translation t, R and t are estimated by decomposing E.
         utility::optional<float> estimateScale(
@@ -248,6 +256,9 @@ namespace emo {
         KeyFrame *mpReferenceKF;
         std::vector<KeyFrame*> mvpLocalKeyFrames;
         std::vector<MapPoint*> mvpLocalMapPoints;
+
+        // flow of current frame
+        std::vector<FlowEntry> m_flowVec;
     };
 }
 

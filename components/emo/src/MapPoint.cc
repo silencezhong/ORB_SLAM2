@@ -101,11 +101,7 @@ void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
     if(mObservations.count(pKF))
         return;
     mObservations[pKF]=idx;
-
-    if(pKF->mvuRight[idx]>=0)
-        nObs+=2;
-    else
-        nObs++;
+    nObs++;
 }
 
 void MapPoint::EraseObservation(KeyFrame* pKF)
@@ -116,11 +112,7 @@ void MapPoint::EraseObservation(KeyFrame* pKF)
         if(mObservations.count(pKF))
         {
             int idx = mObservations[pKF];
-            if(pKF->mvuRight[idx]>=0)
-                nObs-=2;
-            else
-                nObs--;
-
+            nObs--;
             mObservations.erase(pKF);
 
             if(mpRefKF==pKF)

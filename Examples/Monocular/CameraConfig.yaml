@@ -14,9 +14,10 @@ PerspectiveCamera.k2: 0.0
 PerspectiveCamera.p1: 0.0
 PerspectiveCamera.p2: 0.0
 
-PerspectiveImage.width: 1408
-PerspectiveImage.height: 376
+PerspectiveCamera.height2road: 1.55
 
+PerspectiveImage.width: 1408.0
+PerspectiveImage.height: 376.0
 #--------------------------------------------------------------------------------------------
 # Fisheye Camera 1 (image 02) Parameters.
 #--------------------------------------------------------------------------------------------
@@ -56,8 +57,8 @@ ORBextractor.nLevels: 8
 # Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
 # Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
 # You can lower these values if your images have low contrast			
-ORBextractor.iniThFAST: 20
-ORBextractor.minThFAST: 7
+ORBextractor.iniThFAST: 15
+ORBextractor.minThFAST: 5
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

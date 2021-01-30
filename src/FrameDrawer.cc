@@ -55,9 +55,9 @@ cv::Mat FrameDrawer::DrawFrame()
 
         if(mState==Tracking::NOT_INITIALIZED)
         {
+            vMatches = mvIniMatches;
             vCurrentKeys = mvCurrentKeys;
             vIniKeys = mvIniKeys;
-            vMatches = mvIniMatches;
         }
         else if(mState==Tracking::OK)
         {

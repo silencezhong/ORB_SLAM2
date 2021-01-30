@@ -57,6 +57,8 @@ namespace camera_model
         float getCx() { return m_cx_f; }
         float getCy() { return m_cy_f; }
 
+        cv::Mat getK() const { return m_intrinsicsMat;}
+
         const images::CImages& getImageClass() const { return m_image; }
 
         void setImage(const cv::Mat& f_img_r)

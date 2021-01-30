@@ -26,11 +26,47 @@ void EgoMotion::createInitialMap(const cv::Mat &f_img1_r, const cv::Mat &f_img2_
     m_map.AddKeyFrame(l_keyFrame2_p);
 
     // Create MapPoints and asscoiate to keyframes
+    for(size_t i=0; i<m_flowVec.size();i++)
+    {
+        if(m_flowVec[i].is3DValid())
+        {
+            //Create MapPoint.
+            cv::Mat worldPos(m_flowVec[i].m_3dPos);
+            //ToDo: check the code, especially the linkage of mappoint and frame, frame1, frame2 correspondence to current frame and init frame
+            auto * l_mapPoint_p = new MapPoint(worldPos, l_keyFrame2_p, &m_map);
+            l_keyFrame1_p->AddMapPoint(l_mapPoint_p, m_flowVec[i].m_idInFeatureVecFrame1);
+            l_keyFrame2_p->AddMapPoint(l_mapPoint_p, m_flowVec[i].m_idInFeatureVecFrame2);
+
+            l_mapPoint_p->AddObservation(l_keyFrame1_p, m_flowVec[i].m_idInFeatureVecFrame1);
+            l_mapPoint_p->AddObservation(l_keyFrame2_p, m_flowVec[i].m_idInFeatureVecFrame2);
+
+            l_mapPoint_p->ComputeDistinctiveDescriptors();
+            l_mapPoint_p->UpdateNormalAndDepth();
+
+            //Fill Current Frame structure
+            l_frame2.mvpMapPoints[m_flowVec[i].m_idInFeatureVecFrame2] = l_mapPoint_p;
+            l_frame2.mvbOutlier[m_flowVec[i].m_idInFeatureVecFrame2] = false;
+
+            //Add to Map
+            m_map.AddMapPoint(l_mapPoint_p);
+        }
+    }
+
+    // Update Connections
+    l_keyFrame1_p->UpdateConnections();
+    l_keyFrame2_p->UpdateConnections();
+
+    // Bundle Adjustment
+    cout << "New Map created with " << m_map.MapPointsInMap() << " points" << endl;
+
+    Optimizer::GlobalBundleAdjustemnt(&m_map,20);
 
 }
 
 utility::optional<cv::Matx44f> EgoMotion::estimateMotionBetweenTwoFrames(const cv::Mat &f_img1_r, const cv::Mat &f_img2_r)
 {
+    m_flowVec.clear();
+
     // extract orb features
     Frame m_firstFrame = Frame(f_img1_r, 1, m_orbExtractor, m_camera_r);
     Frame m_2ndFrame = Frame(f_img2_r, 1, m_orbExtractor, m_camera_r);
@@ -74,19 +110,20 @@ utility::optional<cv::Matx44f> EgoMotion::estimateMotionBetweenTwoFrames(const c
         // calculate derotated flow
         assert(l_inlierFlagVec_r.size() == l_Matches12Vec.size());
         m_2ndFrame.derotateKeys(l_derotation);
-        std::vector<FlowEntry> l_flowVec;
         for(int l_idx_i = 0; l_idx_i < l_Matches12Vec.size(); ++l_idx_i)
         {
             if(l_inlierFlagVec_r[l_idx_i])
             {
                 cv::KeyPoint l_point1 = m_firstFrame.mvKeys[l_Matches12Vec[l_idx_i].first];
                 cv::Point2f  l_point2 = m_2ndFrame.m_derotatedKeys[l_Matches12Vec[l_idx_i].second];
-                l_flowVec.emplace_back(FlowEntry(l_point1.pt, l_point2.x - l_point1.pt.x, l_point2.y - l_point1.pt.y, mvIniP3D[l_Matches12Vec[l_idx_i].first], l_invK));
+                m_flowVec.emplace_back(FlowEntry(l_point1.pt, l_point2.x - l_point1.pt.x, l_point2.y - l_point1.pt.y,
+                                                 l_Matches12Vec[l_idx_i].first, l_Matches12Vec[l_idx_i].second,
+                                                 mvIniP3D[l_Matches12Vec[l_idx_i].first], l_invK));
             }
         }
 
         // estimate FOE
-        const auto l_result = estimateFOE(l_flowVec);
+        const auto l_result = estimateFOE(m_flowVec);
         assert(l_result.isValid());
         const cv::Point2f l_FOE = l_result.getData();
 
@@ -102,7 +139,7 @@ utility::optional<cv::Matx44f> EgoMotion::estimateMotionBetweenTwoFrames(const c
 
         const int l_imgWidth = f_img1_r.cols;
         const int l_imgHeight = f_img1_r.rows;
-        const auto l_d_f = estimateScale(l_flowVec, l_FOE, l_derotatedTranslation, l_roadNorm, l_imgWidth, l_imgHeight);
+        const auto l_d_f = estimateScale(m_flowVec, l_FOE, l_derotatedTranslation, l_roadNorm, l_imgWidth, l_imgHeight);
         if(l_d_f.isValid())
         {
             // recover homography matrix
@@ -110,10 +147,16 @@ utility::optional<cv::Matx44f> EgoMotion::estimateMotionBetweenTwoFrames(const c
             H = l_K*H*l_invK;
             H = H*(1.0f/H(2,2));
             const float l_scaleTo3DWrold_f = m_camera_r.getCameraHeight2Road()/std::abs(l_d_f.getData());
+
+            // scale all 3d points
+            for(auto& l_flowEntry_r : m_flowVec)
+            {
+                l_flowEntry_r.m_3dPos = l_flowEntry_r.m_3dPos*l_scaleTo3DWrold_f;
+            }
+
             const cv::Matx31f l_scaledTranslation = l_scaleTo3DWrold_f * l_translationEnd2Start;
             cv::Matx44f l_transform = cv::Matx44f::eye();
-            utility::copyRotation2Transform(l_rotation, l_transform);
-            utility::copyTranslation2Transform(l_scaledTranslation, l_transform);
+            utility::copyRT2Transform(l_rotation, l_scaledTranslation, l_transform);
             return utility::optional<cv::Matx44f>(l_transform);
         }
     }

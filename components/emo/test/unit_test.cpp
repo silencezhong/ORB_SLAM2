@@ -43,11 +43,11 @@ protected:
         m_pinholeCamera = camera::Pinhole(vCamCalib, l_cameraHeight_f);
 
         // load orb extractor parameters
-        int nFeatures = l_Settings["ORBextractor.nFeatures"];
-        float fScaleFactor = l_Settings["ORBextractor.scaleFactor"];
-        int nLevels = l_Settings["ORBextractor.nLevels"];
-        int fIniThFAST = l_Settings["ORBextractor.iniThFAST"];
-        int fMinThFAST = l_Settings["ORBextractor.minThFAST"];
+        nFeatures = l_Settings["ORBextractor.nFeatures"];
+        fScaleFactor = l_Settings["ORBextractor.scaleFactor"];
+        nLevels = l_Settings["ORBextractor.nLevels"];
+        fIniThFAST = l_Settings["ORBextractor.iniThFAST"];
+        fMinThFAST = l_Settings["ORBextractor.minThFAST"];
     }
 
     // virtual void TearDown() {}
@@ -59,14 +59,23 @@ protected:
     int nLevels;
     int fIniThFAST;
     int fMinThFAST;
-
 };
 //
-TEST_F(EgoMotionTest, estimateMotionBetweenTwoFrames)
+TEST_F(EgoMotionTest, DISABLED_estimateMotionBetweenTwoFrames)
 {
     emo::EgoMotion l_egomotion(nFeatures, fScaleFactor, nLevels,fIniThFAST,  fMinThFAST,m_pinholeCamera );
-    auto l_transform = l_egomotion.estimateMotionBetweenTwoFrames(m_fisrsImg, m_2ndImg);
-    EXPECT_TRUE(l_transform.isValid());
+    auto l_returnClass = l_egomotion.estimateMotionBetweenTwoFrames(m_fisrsImg, m_2ndImg);
+    ASSERT_TRUE(l_returnClass.isValid());
+    auto l_transform = l_returnClass.getData();
+    cv::Vec3f l_translation(l_transform(0,3), l_transform(1,3), l_transform(2,3));
+    const float l_translationGroundTruth_f = 0.55f;
+    EXPECT_TRUE(std::abs(cv::norm(l_translation)- l_translationGroundTruth_f) < 0.05f);
+}
+
+TEST_F(EgoMotionTest, createInitialMap)
+{
+    emo::EgoMotion l_egomotion(nFeatures, fScaleFactor, nLevels,fIniThFAST,  fMinThFAST,m_pinholeCamera );
+    l_egomotion.createInitialMap(m_fisrsImg, m_2ndImg);
 }
 
 

@@ -40,8 +40,6 @@ public:
     void ImgToCamera(float& x, float& y, float& z,
                      const float& u, const float& v) const final;
 
-    cv::Mat getK() const { return m_intrinsicsMat;}
-
 private:
 
 };

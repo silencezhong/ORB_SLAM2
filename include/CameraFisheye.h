@@ -48,6 +48,17 @@ namespace camera_model
         void ImgToCamera(float& x, float& y, float& z,
                          const float& u, const float& v) const final;
 
+        cv::Mat getDistortCoe() const { return m_DistCoe; }
+
+        void showImage()
+        {
+            cv::Mat l_undistortIm = m_image.getImage();
+            cv::fisheye::undistortImage(m_image.getImage(), l_undistortIm, m_intrinsicsMat, m_DistCoe );
+//            cv::imshow("Display window", l_undistortIm);
+//            cv::waitKey(0); // Wait for a keystroke in the window
+            cv::imwrite("/home/kevin/save.jpg", l_undistortIm);
+        }
+
     private:
         float m_k1_f;
         float m_k2_f;

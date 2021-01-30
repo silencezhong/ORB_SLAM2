@@ -111,6 +111,7 @@ public:
     void Reset();
 
     const camera_model::CCameraPerspective& getPerspectiveCamera() const {return m_perspectiveCamera;}
+    const camera_model::CCameraFisheye& getFisheyeCamera() const {return m_fisheyeCamera;}
 
 protected:
     void Track();

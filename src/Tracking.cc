@@ -141,12 +141,20 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const cv::Mat &f_fisheye
 {
     m_perspectiveCamera.setImage(im);
     m_fisheyeCamera.setImage(f_fisheyeIm_r);
+//    m_fisheyeCamera.showImage();
 
     if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET)
-        mCurrentFrame = Frame(m_perspectiveCamera.getImageClass().getImage(),timestamp,mpIniORBextractor,mpORBVocabulary, m_perspectiveCamera.getK(),mDistCoef,-1,mThDepth);
+    {
+//        mDistCoef = m_fisheyeCamera.getDistortCoe();
+        mCurrentFrame = Frame(m_perspectiveCamera.getImageClass().getImage(), timestamp, mpIniORBextractor, mpORBVocabulary,
+                              m_perspectiveCamera.getK(), mDistCoef, -1, mThDepth);
+    }
     else
-        mCurrentFrame = Frame(m_perspectiveCamera.getImageClass().getImage(),timestamp,mpORBextractorLeft,mpORBVocabulary,m_perspectiveCamera.getK(),mDistCoef,-1,mThDepth);
-
+    {
+//        mDistCoef = m_fisheyeCamera.getDistortCoe();
+        mCurrentFrame = Frame(m_perspectiveCamera.getImageClass().getImage(), timestamp, mpORBextractorLeft, mpORBVocabulary,
+                              m_perspectiveCamera.getK(), mDistCoef, -1, mThDepth);
+    }
     Track();
 
     return mCurrentFrame.mTcw.clone();

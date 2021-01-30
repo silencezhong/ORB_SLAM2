@@ -490,22 +490,22 @@ bool Initializer::ReconstructF(vector<bool> &vbMatchesInliers, cv::Mat &F21, cv:
     float parallax1,parallax2, parallax3, parallax4;
 
 
-    /////////////////////////////////
-    // visualization for debug
-    cv::Mat mask = cv::Mat::zeros(m_visImg.size(), m_visImg.type());
-    for(size_t i=0, iend=mvMatches12.size();i<iend;i++)
-    {
-        if (!vbMatchesInliers[i])
-            continue;
-        const cv::KeyPoint &kp1 = mvKeys1[mvMatches12[i].first];
-        const cv::KeyPoint &kp2 = mvKeys2[mvMatches12[i].second];
-        cv::line(mask, kp1.pt, kp2.pt, cv::Scalar(0, 0,256),2);
-    }
-    cv::Mat img;
-    add(m_visImg, mask, img);
-    imshow("test", img);
-    cvWaitKey(0);
-    ////////////////////////////////
+//    /////////////////////////////////
+//    // visualization for debug
+//    cv::Mat mask = cv::Mat::zeros(m_visImg.size(), m_visImg.type());
+//    for(size_t i=0, iend=mvMatches12.size();i<iend;i++)
+//    {
+//        if (!vbMatchesInliers[i])
+//            continue;
+//        const cv::KeyPoint &kp1 = mvKeys1[mvMatches12[i].first];
+//        const cv::KeyPoint &kp2 = mvKeys2[mvMatches12[i].second];
+//        cv::line(mask, kp1.pt, kp2.pt, cv::Scalar(0, 0,256),2);
+//    }
+//    cv::Mat img;
+//    add(m_visImg, mask, img);
+//    imshow("test", img);
+//    cvWaitKey(0);
+//    ////////////////////////////////
 
     int nGood1 = CheckRT(R1,t1,mvKeys1,mvKeys2,mvMatches12,vbMatchesInliers,K, vP3D1, 4.0f*mSigma2, vbTriangulated1, parallax1);
     int nGood2 = CheckRT(R2,t1,mvKeys1,mvKeys2,mvMatches12,vbMatchesInliers,K, vP3D2, 4.0f*mSigma2, vbTriangulated2, parallax2);

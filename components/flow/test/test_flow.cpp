@@ -172,7 +172,7 @@ void SaveFlowFile(cv::Mat& img, const char* filename)
 
     cv::Mat flowImg(height, width, CV_8UC4);
     float maxFlow = MotionToColor(flowImg.data, img, width, height);
-    cv::imwrite("/home/kevin/SLAM/others/OF_DIS-master/build/test.jpg", flowImg);
+    cv::imwrite("test.jpg", flowImg);
     cv::imshow("test", flowImg);
     cv::waitKey(0);
     fclose(stream);
@@ -504,9 +504,6 @@ int main( int argc, char** argv )
 //       initptr = (float*)flowinit.data;
 //     }
 
-  
-  
-  
   //  *** Run main optical flow / depth algorithm
   float sc_fct = pow(2,lv_l);
   #if (SELECTMODE==1)
@@ -528,8 +525,6 @@ int main( int argc, char** argv )
 
   if (verbosity > 1) gettimeofday(&tv_start_all, NULL);
       
-  
-  
   // *** Resize to original scale, if not run to finest level
   if (lv_l != 0)
   {
